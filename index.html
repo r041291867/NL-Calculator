@@ -414,6 +414,11 @@
                                         <span v-if="m.dmg.actualHitRate <= 0" class="text-red-500 font-bold"
                                             >打不到怪啦！</span
                                         >
+                                        <span
+                                            v-else-if="m.probString.split(',').length > 10"
+                                            class="text-red-500 font-bold"
+                                            >超過10次無法顯示</span
+                                        >
                                         <span v-else>{{ m.probString }}</span>
                                     </div>
                                 </td>
@@ -430,7 +435,7 @@
                                         v-if="m.name.includes('香水') && m.dmg.actualHitRate>0"
                                         class="text-xs text-gray-400"
                                     >
-                                        ({{m.expectedHits.toFixed(3)-1 }} + 1)
+                                        ({{(m.expectedHits-1).toFixed(2) }} + 1)
                                         <div>變身前期望擊殺次數</div>
                                     </div>
                                 </td>
@@ -646,18 +651,21 @@
                     };
 
                     const getNormalApproximationProbabilities = (hp, dmg) => {
-                        const { mean_total, sd, actualHitRate } = dmg;
+                        const { mu_actual_per_hit, var_actual_per_hit, mean_total, sd, n, actualHitRate } = dmg;
                         if (actualHitRate <= 0 || mean_total <= 0) return "0";
 
-                        let probs = [];
-                        let currentCumP = 0;
-                        let castTimes = 1;
+                        let prob1 = sd === 0 ? (hp <= mean_total ? 1 : 0) : 1 - normDistCDF(hp, mean_total, sd);
+                        prob1 = Math.max(0, Math.min(1, prob1));
+                        if (prob1 >= 0.999) return "100";
 
-                        // 計算前 10 次的擊殺機率分布
-                        while (castTimes <= 10) {
-                            const current_mean = castTimes * mean_total;
-                            const current_sd = Math.sqrt(castTimes) * sd;
+                        let probs = [(prob1 * 100).toFixed(2)];
+                        let currentCumP = prob1;
+                        let castTimes = 2;
 
+                        while (currentCumP < 0.999 && castTimes <= 10) {
+                            const current_n = n * castTimes;
+                            const current_mean = current_n * mu_actual_per_hit;
+                            const current_sd = Math.sqrt(current_n * var_actual_per_hit);
                             let p_n =
                                 current_sd === 0
                                     ? hp <= current_mean
@@ -665,12 +673,12 @@
                                         : 0
                                     : 1 - normDistCDF(hp, current_mean, current_sd);
                             p_n = Math.max(currentCumP, Math.min(1, p_n));
-
-                            probs.push((p_n * 100).toFixed(1));
+                            console.log(currentCumP, p_n);
+                            probs.push((p_n * 100).toFixed(2));
                             currentCumP = p_n;
-                            if (currentCumP >= 0.999) break;
                             castTimes++;
                         }
+                        if (currentCumP < 0.999) probs.push("100.00");
                         return probs.join(", ");
                     };
 
