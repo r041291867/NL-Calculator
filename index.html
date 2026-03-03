@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>標賊傷害效益計算機 (自動配點與命中整合版)</title>
+        <title>標賊傷害效益計算機</title>
         <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
         <script src="https://cdn.tailwindcss.com"></script>
         <style>
@@ -21,7 +21,6 @@
             .toggle-checkbox:checked + .toggle-label {
                 background-color: #10b981;
             }
-            /* 隱藏 number input 的上下箭頭 */
             input[type="number"]::-webkit-inner-spin-button,
             input[type="number"]::-webkit-outer-spin-button {
                 -webkit-appearance: none;
@@ -58,7 +57,6 @@
                         >蒙地卡羅 (暴力模擬)</span
                     >
                 </div>
-
                 <div
                     v-if="isMonteCarlo"
                     class="flex items-center gap-2 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-100"
@@ -71,6 +69,7 @@
                         <option value="1000">1,000 次</option>
                         <option value="10000">10,000 次 (推薦)</option>
                         <option value="50000">50,000 次</option>
+                        <option value="100000">100,000 次 (極限測試用)</option>
                     </select>
                 </div>
             </div>
@@ -80,7 +79,6 @@
                     class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-white/20 pb-4"
                 >
                     <h2 class="text-xl font-bold flex items-center"><span class="mr-2">👤</span> 角色屬性與自動配點</h2>
-
                     <div class="flex items-center gap-3 bg-white/10 p-2 rounded-lg border border-white/20 mt-4 md:mt-0">
                         <span class="text-xs font-bold text-yellow-300">升級分配 (總和 5)</span>
                         <div class="flex gap-2 items-center text-xs">
@@ -174,7 +172,7 @@
                         />
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-green-300 mb-1">攻擊段數</label>
+                        <label class="block text-xs font-bold text-green-300 mb-1">基礎攻擊段數</label>
                         <input
                             v-model.number="char.hits"
                             type="number"
@@ -196,6 +194,33 @@
                             type="number"
                             class="w-full p-2 rounded bg-yellow-400/20 border border-yellow-400/50 focus:bg-yellow-400/40 outline-none text-white"
                         />
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-white/20 flex flex-wrap gap-4 items-center">
+                    <div class="flex items-center gap-2 bg-purple-600/30 p-2 rounded-lg border border-purple-400/50">
+                        <input
+                            type="checkbox"
+                            id="shadow-partner"
+                            v-model="useShadowPartner"
+                            class="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 cursor-pointer"
+                        />
+                        <label
+                            for="shadow-partner"
+                            class="text-sm font-bold text-purple-200 cursor-pointer flex items-center gap-1"
+                        >
+                            👥 啟用影分身
+                        </label>
+                        <span class="text-xs text-white/70 ml-2">傷害比例:</span>
+                        <div class="flex items-center text-xs">
+                            <input
+                                v-model.number="shadowPartnerDmg"
+                                :disabled="!useShadowPartner"
+                                type="number"
+                                class="w-12 p-1 text-center rounded bg-white/20 border border-white/30 focus:bg-white/40 outline-none text-white disabled:opacity-50"
+                            />
+                            <span class="ml-1">%</span>
+                        </div>
                     </div>
                 </div>
 
@@ -292,12 +317,26 @@
             <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
                 <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                     <h2 class="text-lg font-bold text-gray-700">經驗效率排行</h2>
-                    <button
-                        @click="clearAll"
-                        class="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-1 rounded transition font-medium border border-red-200 ml-auto text-sm"
-                    >
-                        清空資料
-                    </button>
+                    <div class="flex gap-2">
+                        <button
+                            @click="exportData"
+                            class="bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1 rounded transition border border-blue-200 text-sm font-medium"
+                        >
+                            匯出資料
+                        </button>
+                        <button
+                            @click="importData"
+                            class="bg-green-50 hover:bg-green-100 text-green-600 px-3 py-1 rounded transition border border-green-200 text-sm font-medium"
+                        >
+                            匯入資料
+                        </button>
+                        <button
+                            @click="clearAll"
+                            class="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-1 rounded transition font-medium border border-red-200 text-sm"
+                        >
+                            清空
+                        </button>
+                    </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse text-sm">
@@ -306,7 +345,11 @@
                                 <th class="p-4 border-b">排名</th>
                                 <th class="p-4 border-b">怪物資訊</th>
                                 <th class="p-4 border-b min-w-[200px]">詳細傷害區間 (單擊總和)</th>
-                                <th class="p-4 border-b">推算機率串 (%)</th>
+                                <th class="p-4 border-b">
+                                    推算機率串 (%)<br /><span class="text-xs text-gray-400 font-normal"
+                                        >前10次攻擊累積擊殺率</span
+                                    >
+                                </th>
                                 <th class="p-4 border-b text-right">期望次數</th>
                                 <th class="p-4 border-b text-right text-indigo-600 font-bold">每下經驗</th>
                                 <th class="p-4 border-b text-center">操作</th>
@@ -323,9 +366,11 @@
                                     <span v-else>{{ index + 1 }}</span>
                                 </td>
                                 <td class="p-4 border-b">
-                                    <div class="font-bold text-base">{{ m.name }}</div>
+                                    <div class="font-bold text-base">
+                                        {{ m.name }} <span class="text-[12px] text-gray-400">Lv.{{ m.level }}</span>
+                                    </div>
                                     <div class="text-[12px] text-gray-400">
-                                        Lv.{{ m.level }} / HP: {{ m.hp }} / Def: {{ m.def }} / Exp: {{ m.exp }}
+                                        HP: {{ m.hp }} / Def: {{ m.def }} / Avoid: {{ m.avoid }} / Exp: {{ m.exp }}
                                     </div>
                                     <div class="mt-1">
                                         <span
@@ -341,31 +386,29 @@
                                         <span
                                             v-else
                                             class="text-[12px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded border border-yellow-200"
+                                            >命中率: {{ (m.dmg.actualHitRate * 100).toFixed(1) }}%</span
                                         >
-                                            命中率: {{ (m.dmg.actualHitRate * 100).toFixed(1) }}%
-                                        </span>
                                     </div>
                                 </td>
                                 <td class="p-4 border-b text-xs font-mono leading-tight">
                                     <div class="text-gray-500">
-                                        全沒爆:
-                                        <span class="text-blue-500">{{ m.dmg.totalNoCritMin }}</span>
-                                        ~
-                                        <span class="text-red-400">{{ m.dmg.totalNoCritMax }}</span>
+                                        沒爆擊: <span class="text-blue-500">{{ m.dmg.displayTotalNoCritMin }}</span> ~
+                                        <span class="text-red-400">{{ m.dmg.displayTotalNoCritMax }}</span>
                                     </div>
                                     <div class="text-orange-600">
-                                        全爆擊:
-                                        <span class="text-blue-500">{{ m.dmg.totalAllCritMin }}</span>
-                                        ~
-                                        <span class="text-red-500 font-bold">{{ m.dmg.totalAllCritMax }}</span>
+                                        全爆擊: <span class="text-blue-500">{{ m.dmg.displayTotalAllCritMin }}</span> ~
+                                        <span class="text-red-500 font-bold">{{ m.dmg.displayTotalAllCritMax }}</span>
                                     </div>
                                     <div class="text-indigo-600 font-bold mt-1 pt-1 border-t border-gray-200">
-                                        期望值: {{ m.dmg.mean_total.toFixed(1) }}
+                                        平均傷害: {{ m.dmg.mean_total.toFixed(0) }}
+                                        <span v-if="useShadowPartner" class="text-purple-500 text-[10px] ml-1"
+                                            >(含影分身)</span
+                                        >
                                     </div>
                                 </td>
                                 <td class="p-4 border-b">
                                     <div
-                                        class="text-[14px] text-gray-500 max-w-[200px] break-words font-mono"
+                                        class="text-[12px] text-gray-500 max-w-[180px] break-words font-mono"
                                         :title="m.probString"
                                     >
                                         <span v-if="m.dmg.actualHitRate <= 0" class="text-red-500 font-bold"
@@ -382,9 +425,9 @@
                                         (優化為 HP / 平均傷害)
                                     </div>
                                     <span v-if="m.dmg.actualHitRate <= 0">∞</span>
-                                    <span v-else>{{ m.expectedHits.toFixed(3) }}</span>
+                                    <span v-else>{{ m.expectedHits.toFixed(2) }}</span>
                                     <div
-                                        v-if="m.expectedHits > 10 && m.dmg.actualHitRate>0"
+                                        v-if="m.name.includes('香水') && m.dmg.actualHitRate>0"
                                         class="text-xs text-gray-400"
                                     >
                                         ({{m.expectedHits.toFixed(3)-1 }} + 1)
@@ -437,7 +480,10 @@
                     const isMonteCarlo = ref(false);
                     const mcIterations = ref(10000);
 
-                    // 自動配點設定
+                    // 新增：影分身設定
+                    const useShadowPartner = ref(false);
+                    const shadowPartnerDmg = ref(50); // 預設 50%
+
                     const autoDist = ref({ luk: 5, dex: 0, str: 0 });
                     // 角色初始屬性設定
                     const char = ref({
@@ -445,57 +491,33 @@
                         luk: 250,
                         dex: 80,
                         str: 4,
-                        extraAcc: 0, // 新增：額外命中率 (藥水/裝備)
+                        extraAcc: 0,
                         skillPower: 150,
                         hits: 2,
                         critRate: 50,
                         critExtraDmg: 100,
-                        atkParts: {
-                            weapon: 40,
-                            glove: 10,
-                            potion: 5,
-                            stars: 27,
-                            others: 0,
-                        },
+                        atkParts: { weapon: 26, glove: 8, potion: 8, stars: 23, others: 0 },
                     });
                     // 新增怪物的預設值
-                    const newMob = ref({
-                        name: "發條熊",
-                        level: 50,
-                        hp: 3000,
-                        def: 50,
-                        avoid: 20,
-                        exp: 100,
-                    });
+                    const newMob = ref({ name: "發條熊", level: 30, hp: 950, def: 38, avoid: 10, exp: 60 });
                     const mobs = ref([]);
 
-                    // --- 【核心修正 1：總命中率計算 (DEX*0.6 + LUK*0.3 + 額外命中)】 ---
-                    const totalAcc = computed(() => {
-                        const baseAcc = Math.floor(char.value.dex * 0.6 + char.value.luk * 0.3);
-                        const extra = parseFloat(char.value.extraAcc) || 0;
-                        return baseAcc + extra;
-                    });
-
+                    const totalAcc = computed(
+                        () =>
+                            Math.floor(char.value.dex * 0.6 + char.value.luk * 0.3) +
+                            (parseFloat(char.value.extraAcc) || 0),
+                    );
                     const totalAtk = computed(() =>
                         Object.values(char.value.atkParts).reduce((a, b) => a + (parseFloat(b) || 0), 0),
                     );
-                    const translateAtk = (key) =>
-                        ({
-                            weapon: "武器",
-                            glove: "手套",
-                            potion: "藥水",
-                            stars: "飛鏢",
-                            others: "其他",
-                        })[key] || key;
 
-                    // --- 【核心修正 2：升級與降級邏輯】 ---
+                    const translateAtk = (key) =>
+                        ({ weapon: "武器", glove: "手套", potion: "藥水", stars: "飛鏢", others: "其他" })[key] || key;
+
                     const levelUp = () => {
-                        const totalPoints = autoDist.value.luk + autoDist.value.dex + autoDist.value.str;
-                        if (totalPoints > 5) {
-                            alert("升級點數總和不能超過 5 點！");
-                            return;
-                        }
-                        char.value.level += 1;
+                        if (autoDist.value.luk + autoDist.value.dex + autoDist.value.str > 5)
+                            return alert("點數總和不能超過 5！");
+                        char.value.level++;
                         char.value.luk += autoDist.value.luk;
                         char.value.dex += autoDist.value.dex;
                         char.value.str += autoDist.value.str;
@@ -503,95 +525,139 @@
 
                     const levelDown = () => {
                         if (char.value.level <= 1) return;
-                        char.value.level -= 1;
-                        // 扣除屬性，但不允許扣到負數
+                        char.value.level--;
                         char.value.luk = Math.max(4, char.value.luk - autoDist.value.luk);
                         char.value.dex = Math.max(4, char.value.dex - autoDist.value.dex);
                         char.value.str = Math.max(4, char.value.str - autoDist.value.str);
                     };
 
-                    // --- 【核心修正 3：傷害計算邏輯整合與優化】 ---
+                    // --- 核心傷害計算邏輯 (加入影分身處理) ---
                     const calculateDamage = (mob) => {
                         const lvDiff = Math.max(0, mob.level - char.value.level);
-
-                        // --- 命中率判定使用 totalAcc.value ---
                         const reqHit = (mob.avoid * (55 + 2 * lvDiff)) / 15;
                         const halfReq = reqHit / 2;
 
+                        // 命中率計算：滿足需求即 100% 命中，低於一半需求則 0% 命中，介於兩者之間線性插值
+                        // 實際命中 = ((命中 - 需求命中的一半) ÷ 一半) × 100%
                         let p_hit = 1;
                         if (totalAcc.value >= reqHit) p_hit = 1;
                         else if (totalAcc.value <= halfReq) p_hit = 0;
                         else p_hit = (totalAcc.value - halfReq) / halfReq;
-
                         const actualHitRate = Math.max(0, Math.min(1, p_hit));
 
                         const levelMult = 1 - 0.01 * lvDiff;
                         const atk = totalAtk.value;
                         const luk = char.value.luk;
                         const def = mob.def;
-                        const skillMult = char.value.skillPower / 100;
-                        const critSkillMult = (char.value.skillPower + char.value.critExtraDmg) / 100;
-                        const p_crit = (char.value.critRate || 0) / 100;
-                        const n = char.value.hits || 1;
 
+                        // 基礎傷害上下限
                         const baseStatMax = Math.floor((5.25 * luk * atk) / 100);
                         const baseStatMin = Math.floor((2.625 * luk * atk) / 100);
                         const rawMax = baseStatMax * levelMult - def * 0.55;
                         const rawMin = baseStatMin * levelMult - def * 0.55;
 
+                        // 主體技能倍率
+                        const skillMult = char.value.skillPower / 100;
+                        const critSkillMult = (char.value.skillPower + char.value.critExtraDmg) / 100;
+
+                        // 主體傷害區間
                         const NC_lo = Math.max(0, Math.floor(rawMin * skillMult));
                         const NC_hi = Math.max(1, Math.floor(rawMax * skillMult));
                         const C_lo = Math.max(0, Math.floor(rawMin * critSkillMult));
                         const C_hi = Math.max(1, Math.floor(rawMax * critSkillMult));
 
-                        const mu_success = (1 - p_crit) * ((NC_lo + NC_hi) / 2) + p_crit * ((C_lo + C_hi) / 2);
-                        const var_success =
+                        const p_crit = (char.value.critRate || 0) / 100;
+                        const n = char.value.hits || 1;
+
+                        // 處理影分身邏輯
+                        let shadow_NC_lo = 0,
+                            shadow_NC_hi = 0,
+                            shadow_C_lo = 0,
+                            shadow_C_hi = 0;
+                        let shadow_mu_success = 0,
+                            shadow_var_success = 0;
+                        let sp_ratio = shadowPartnerDmg.value / 100;
+
+                        if (useShadowPartner.value) {
+                            // 影分身的傷害是基於主體打出的最終數字去乘比例
+                            shadow_NC_lo = Math.floor(NC_lo * sp_ratio);
+                            shadow_NC_hi = Math.floor(NC_hi * sp_ratio);
+                            shadow_C_lo = Math.floor(C_lo * sp_ratio);
+                            shadow_C_hi = Math.floor(C_hi * sp_ratio);
+
+                            // 影分身單擊期望值與變異數
+                            shadow_mu_success =
+                                (1 - p_crit) * ((shadow_NC_lo + shadow_NC_hi) / 2) +
+                                p_crit * ((shadow_C_lo + shadow_C_hi) / 2);
+                            shadow_var_success =
+                                (1 - p_crit) * (Math.pow(shadow_NC_hi - shadow_NC_lo, 2) / 12) +
+                                p_crit * (Math.pow(shadow_C_hi - shadow_C_lo, 2) / 12) +
+                                p_crit *
+                                    (1 - p_crit) *
+                                    Math.pow((shadow_C_lo + shadow_C_hi) / 2 - (shadow_NC_lo + shadow_NC_hi) / 2, 2);
+                        }
+
+                        // 主體單擊期望值與變異數
+                        const main_mu_success = (1 - p_crit) * ((NC_lo + NC_hi) / 2) + p_crit * ((C_lo + C_hi) / 2);
+                        const main_var_success =
                             (1 - p_crit) * (Math.pow(NC_hi - NC_lo, 2) / 12) +
                             p_crit * (Math.pow(C_hi - C_lo, 2) / 12) +
                             p_crit * (1 - p_crit) * Math.pow((C_lo + C_hi) / 2 - (NC_lo + NC_hi) / 2, 2);
 
-                        const mu_actual = actualHitRate * mu_success;
-                        const var_actual =
-                            actualHitRate * var_success + actualHitRate * (1 - actualHitRate) * Math.pow(mu_success, 2);
+                        // 合併主體與影分身 (一次攻擊動作包含 n 下主體 + n 下影分身)
+                        const total_mu_success_per_hit = main_mu_success + shadow_mu_success;
+                        const total_var_success_per_hit = main_var_success + shadow_var_success;
 
-                        const mean_total = n * mu_actual;
-                        const sd = Math.sqrt(n * var_actual);
+                        // 考慮命中率後的「整套動作(n擊)」總期望值與變異數
+                        const mu_actual_per_hit = actualHitRate * total_mu_success_per_hit;
+                        const var_actual_per_hit =
+                            actualHitRate * total_var_success_per_hit +
+                            actualHitRate * (1 - actualHitRate) * Math.pow(total_mu_success_per_hit, 2);
+
+                        const mean_total = n * mu_actual_per_hit;
+                        const sd = Math.sqrt(n * var_actual_per_hit);
 
                         return {
+                            // 提供給 UI 顯示用
+                            displayTotalNoCritMin: (NC_lo + shadow_NC_lo) * n,
+                            displayTotalNoCritMax: (NC_hi + shadow_NC_hi) * n,
+                            displayTotalAllCritMin: (C_lo + shadow_C_lo) * n,
+                            displayTotalAllCritMax: (C_hi + shadow_C_hi) * n,
+
+                            // 提供給蒙地卡羅運算用
                             NC_lo,
                             NC_hi,
                             C_lo,
                             C_hi,
-                            totalNoCritMin: NC_lo * n,
-                            totalNoCritMax: NC_hi * n,
-                            totalAllCritMin: C_lo * n,
-                            totalAllCritMax: C_hi * n,
-                            mu_actual,
-                            var_actual,
-                            mean_total,
+                            shadow_NC_lo,
+                            shadow_NC_hi,
+                            shadow_C_lo,
+                            shadow_C_hi,
+
+                            // 統計用
+                            mu_actual_per_hit, // 一擊(包含主體+可能的分身)的平均傷害
+                            var_actual_per_hit,
+                            mean_total, // 一套動作(n擊)的平均傷害
                             sd,
                             p_crit,
                             n,
                             actualHitRate,
                         };
                     };
-                    // --- 【核心修正 4：常態近似機率計算邏輯優化】 ---
+
                     const getNormalApproximationProbabilities = (hp, dmg) => {
-                        const { mu_actual, var_actual, mean_total, sd, n, actualHitRate } = dmg;
+                        const { mean_total, sd, actualHitRate } = dmg;
                         if (actualHitRate <= 0 || mean_total <= 0) return "0";
 
-                        let prob1 = sd === 0 ? (hp <= mean_total ? 1 : 0) : 1 - normDistCDF(hp, mean_total, sd);
-                        prob1 = Math.max(0, Math.min(1, prob1));
-                        if (prob1 >= 0.999) return "100";
+                        let probs = [];
+                        let currentCumP = 0;
+                        let castTimes = 1;
 
-                        let probs = [(prob1 * 100).toFixed(2)];
-                        let currentCumP = prob1;
-                        let castTimes = 2;
+                        // 計算前 10 次的擊殺機率分布
+                        while (castTimes <= 10) {
+                            const current_mean = castTimes * mean_total;
+                            const current_sd = Math.sqrt(castTimes) * sd;
 
-                        while (currentCumP < 0.999 && castTimes <= 10) {
-                            const current_n = n * castTimes;
-                            const current_mean = current_n * mu_actual;
-                            const current_sd = Math.sqrt(current_n * var_actual);
                             let p_n =
                                 current_sd === 0
                                     ? hp <= current_mean
@@ -599,17 +665,29 @@
                                         : 0
                                     : 1 - normDistCDF(hp, current_mean, current_sd);
                             p_n = Math.max(currentCumP, Math.min(1, p_n));
-                            probs.push((p_n * 100).toFixed(2));
+
+                            probs.push((p_n * 100).toFixed(1));
                             currentCumP = p_n;
+                            if (currentCumP >= 0.999) break;
                             castTimes++;
                         }
-                        if (currentCumP < 0.999) probs.push("100.00");
-                        return probs.join(",");
+                        return probs.join(", ");
                     };
 
-                    // --- 【核心修正 4：蒙地卡羅模擬邏輯優化】 ---
                     const getMonteCarloProbabilities = (hp, dmg) => {
-                        const { NC_lo, NC_hi, C_lo, C_hi, p_crit, n, actualHitRate } = dmg;
+                        const {
+                            NC_lo,
+                            NC_hi,
+                            C_lo,
+                            C_hi,
+                            shadow_NC_lo,
+                            shadow_NC_hi,
+                            shadow_C_lo,
+                            shadow_C_hi,
+                            p_crit,
+                            n,
+                            actualHitRate,
+                        } = dmg;
                         if (actualHitRate <= 0) return "0";
 
                         const iterations = mcIterations.value || 10000;
@@ -618,16 +696,28 @@
                         for (let i = 0; i < iterations; i++) {
                             let hpLeft = hp;
                             let casts = 0;
-
                             while (hpLeft > 0 && casts < 10) {
                                 casts++;
                                 let castDamage = 0;
                                 for (let h = 0; h < n; h++) {
                                     if (Math.random() <= actualHitRate) {
-                                        if (Math.random() < p_crit) {
-                                            castDamage += Math.floor(Math.random() * (C_hi - C_lo + 1)) + C_lo;
-                                        } else {
-                                            castDamage += Math.floor(Math.random() * (NC_hi - NC_lo + 1)) + NC_lo;
+                                        // 主體傷害
+                                        let mainDmg = 0;
+                                        if (Math.random() < p_crit)
+                                            mainDmg = Math.floor(Math.random() * (C_hi - C_lo + 1)) + C_lo;
+                                        else mainDmg = Math.floor(Math.random() * (NC_hi - NC_lo + 1)) + NC_lo;
+                                        castDamage += mainDmg;
+
+                                        // 影分身傷害 (獨立判定爆擊)
+                                        if (useShadowPartner.value) {
+                                            if (Math.random() < p_crit)
+                                                castDamage +=
+                                                    Math.floor(Math.random() * (shadow_C_hi - shadow_C_lo + 1)) +
+                                                    shadow_C_lo;
+                                            else
+                                                castDamage +=
+                                                    Math.floor(Math.random() * (shadow_NC_hi - shadow_NC_lo + 1)) +
+                                                    shadow_NC_lo;
                                         }
                                     }
                                 }
@@ -645,8 +735,7 @@
                             probs.push((prob * 100).toFixed(2));
                             if (prob >= 0.999) break;
                         }
-                        if (cumulativeKills[probs.length] / iterations < 0.999) probs.push("100.00");
-                        return probs.join(",");
+                        return probs.join(", ");
                     };
 
                     const getMetrics = (mob) => {
@@ -677,23 +766,24 @@
                         }
                         // 名字有香水則 expectedHits +1，自動加入打死變身前的次數
                         if (mob.name.includes("香水")) expectedHits += 1;
-                        return {
-                            dmg,
-                            probString: probStr,
-                            expectedHits,
-                            expPerHit: mob.exp / expectedHits,
-                        };
+
+                        // 防呆，確保至少需要 1 下
+                        expectedHits = Math.max(1, expectedHits);
+
+                        return { dmg, probString: probStr, expectedHits, expPerHit: mob.exp / expectedHits };
                     };
 
                     const saveData = () => {
                         localStorage.setItem(
-                            "ms_mob_data_v10",
+                            "ms_mob_data_v11",
                             JSON.stringify({
                                 char: char.value,
                                 mobs: mobs.value,
                                 autoDist: autoDist.value,
                                 isMonteCarlo: isMonteCarlo.value,
                                 mcIterations: mcIterations.value,
+                                useShadowPartner: useShadowPartner.value,
+                                shadowPartnerDmg: shadowPartnerDmg.value,
                             }),
                         );
                     };
@@ -722,8 +812,42 @@
                         }
                     };
 
+                    // 匯出資料功能
+                    const exportData = () => {
+                        const dataStr = localStorage.getItem("ms_mob_data_v11");
+                        if (!dataStr) return alert("目前沒有資料可以匯出");
+                        navigator.clipboard
+                            .writeText(dataStr)
+                            .then(() => {
+                                alert("資料已複製到剪貼簿！請到另一台裝置匯入。");
+                            })
+                            .catch((err) => {
+                                prompt("請手動複製以下文字：", dataStr);
+                            });
+                    };
+
+                    // 匯入資料功能
+                    const importData = () => {
+                        const dataStr = prompt("請貼上您匯出的資料代碼：");
+                        if (!dataStr) return;
+                        try {
+                            const parsed = JSON.parse(dataStr);
+                            if (parsed.char) char.value = parsed.char;
+                            if (parsed.mobs) mobs.value = parsed.mobs;
+                            if (parsed.autoDist) autoDist.value = parsed.autoDist;
+                            if (parsed.isMonteCarlo !== undefined) isMonteCarlo.value = parsed.isMonteCarlo;
+                            if (parsed.mcIterations) mcIterations.value = parsed.mcIterations;
+                            if (parsed.useShadowPartner !== undefined) useShadowPartner.value = parsed.useShadowPartner;
+                            if (parsed.shadowPartnerDmg) shadowPartnerDmg.value = parsed.shadowPartnerDmg;
+                            updateAll();
+                            alert("匯入成功！");
+                        } catch (e) {
+                            alert("匯入失敗，資料格式錯誤！");
+                        }
+                    };
+
                     onMounted(() => {
-                        const saved = localStorage.getItem("ms_mob_data_v10");
+                        const saved = localStorage.getItem("ms_mob_data_v11");
                         if (saved) {
                             try {
                                 const parsed = JSON.parse(saved);
@@ -732,6 +856,9 @@
                                 if (parsed.autoDist) autoDist.value = parsed.autoDist;
                                 if (parsed.isMonteCarlo !== undefined) isMonteCarlo.value = parsed.isMonteCarlo;
                                 if (parsed.mcIterations) mcIterations.value = parsed.mcIterations;
+                                if (parsed.useShadowPartner !== undefined)
+                                    useShadowPartner.value = parsed.useShadowPartner;
+                                if (parsed.shadowPartnerDmg) shadowPartnerDmg.value = parsed.shadowPartnerDmg;
                             } catch (e) {
                                 console.error("解析存檔失敗", e);
                             }
@@ -739,10 +866,8 @@
                     });
 
                     watch(
-                        [char, isMonteCarlo, mcIterations, autoDist],
-                        () => {
-                            updateAll();
-                        },
+                        [char, isMonteCarlo, mcIterations, autoDist, useShadowPartner, shadowPartnerDmg],
+                        () => updateAll(),
                         { deep: true },
                     );
 
@@ -762,6 +887,10 @@
                         levelUp,
                         levelDown,
                         totalAcc,
+                        useShadowPartner,
+                        shadowPartnerDmg,
+                        exportData,
+                        importData,
                     };
                 },
             }).mount("#app");
