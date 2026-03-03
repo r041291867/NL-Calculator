@@ -404,6 +404,7 @@
         <script>
             const { createApp, ref, computed, onMounted, watch } = Vue;
 
+            // 常態分布的累積密度函數 (CDF)，用於計算常態近似的機率
             function normDistCDF(x, mean, sd) {
                 if (sd === 0) return x <= mean ? 1 : 0;
                 let z = (x - mean) / sd;
@@ -425,7 +426,7 @@
 
                     // 自動配點設定
                     const autoDist = ref({ luk: 5, dex: 0, str: 0 });
-
+                    // 角色初始屬性設定
                     const char = ref({
                         level: 50,
                         luk: 250,
@@ -444,7 +445,7 @@
                             others: 0,
                         },
                     });
-
+                    // 新增怪物的預設值
                     const newMob = ref({
                         name: "發條熊",
                         level: 50,
@@ -496,6 +497,7 @@
                         char.value.str = Math.max(4, char.value.str - autoDist.value.str);
                     };
 
+                    // --- 【核心修正 3：傷害計算邏輯整合與優化】 ---
                     const calculateDamage = (mob) => {
                         const lvDiff = Math.max(0, mob.level - char.value.level);
 
@@ -560,7 +562,7 @@
                             actualHitRate,
                         };
                     };
-
+                    // --- 【核心修正 4：常態近似機率計算邏輯優化】 ---
                     const getNormalApproximationProbabilities = (hp, dmg) => {
                         const { mu_actual, var_actual, mean_total, sd, n, actualHitRate } = dmg;
                         if (actualHitRate <= 0 || mean_total <= 0) return "0";
@@ -592,6 +594,7 @@
                         return probs.join(",");
                     };
 
+                    // --- 【核心修正 4：蒙地卡羅模擬邏輯優化】 ---
                     const getMonteCarloProbabilities = (hp, dmg) => {
                         const { NC_lo, NC_hi, C_lo, C_hi, p_crit, n, actualHitRate } = dmg;
                         if (actualHitRate <= 0) return "0";
@@ -654,6 +657,9 @@
                             prevP = p;
                         });
                         if (expectedHits <= 0) expectedHits = 9999;
+
+                        // 名字有香水則 expectedHits +1，自動加入打死變身前的次數
+                        if (mob.name.includes("香水")) expectedHits += 1;
                         return {
                             dmg,
                             probString: probStr,
