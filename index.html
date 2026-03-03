@@ -375,8 +375,21 @@
                                     </div>
                                 </td>
                                 <td class="p-4 border-b text-right font-mono text-gray-600">
+                                    <div
+                                        v-if="m.expectedHits > 10 && m.dmg.actualHitRate>0"
+                                        class="text-xs text-gray-400 mb-1"
+                                    >
+                                        (優化為 HP / 平均傷害)
+                                    </div>
                                     <span v-if="m.dmg.actualHitRate <= 0">∞</span>
                                     <span v-else>{{ m.expectedHits.toFixed(3) }}</span>
+                                    <div
+                                        v-if="m.expectedHits > 10 && m.dmg.actualHitRate>0"
+                                        class="text-xs text-gray-400"
+                                    >
+                                        ({{m.expectedHits.toFixed(3)-1 }} + 1)
+                                        <div>變身前期望擊殺次數</div>
+                                    </div>
                                 </td>
                                 <td
                                     class="p-4 border-b text-right font-bold font-mono text-lg"
@@ -658,6 +671,10 @@
                         });
                         if (expectedHits <= 0) expectedHits = 9999;
 
+                        // 如果期望次數超過 10 次，直接使用 hp / 平均傷害的方式計算，避免過度依賴常態近似的尾部誤差
+                        if (expectedHits > 10) {
+                            expectedHits = mob.hp / dmg.mean_total;
+                        }
                         // 名字有香水則 expectedHits +1，自動加入打死變身前的次數
                         if (mob.name.includes("香水")) expectedHits += 1;
                         return {
