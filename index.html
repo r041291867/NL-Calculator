@@ -1,0 +1,747 @@
+<!doctype html>
+<html lang="zh-TW">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>標賊傷害效益計算機 (自動配點與命中整合版)</title>
+        <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            .input-focus:focus {
+                outline: 2px solid #6366f1;
+                border-color: transparent;
+            }
+            .stat-card {
+                background: linear-gradient(135deg, #1e3a8a 0%, #4338ca 100%);
+            }
+            .toggle-checkbox:checked {
+                right: 0;
+                border-color: #10b981;
+            }
+            .toggle-checkbox:checked + .toggle-label {
+                background-color: #10b981;
+            }
+            /* 隱藏 number input 的上下箭頭 */
+            input[type="number"]::-webkit-inner-spin-button,
+            input[type="number"]::-webkit-outer-spin-button {
+                -webkit-appearance: none;
+                margin: 0;
+            }
+        </style>
+    </head>
+    <body class="bg-gray-50 text-gray-800 p-4 md:p-8">
+        <div id="app" class="max-w-7xl mx-auto">
+            <div
+                class="bg-white p-4 rounded-xl shadow-md mb-6 border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4"
+            >
+                <div class="flex items-center gap-4">
+                    <h2 class="font-bold text-gray-700 text-lg">⚙️ 運算引擎：</h2>
+                    <div
+                        class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in"
+                    >
+                        <input
+                            type="checkbox"
+                            id="engine-toggle"
+                            v-model="isMonteCarlo"
+                            class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 z-10 top-0 left-0 checked:translate-x-6 checked:border-emerald-500 border-gray-300"
+                        />
+                        <label
+                            for="engine-toggle"
+                            class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300"
+                        ></label>
+                    </div>
+                    <span :class="isMonteCarlo ? 'text-emerald-600 font-bold' : 'text-gray-400 font-medium'"
+                        >蒙地卡羅 (暴力模擬)</span
+                    >
+                    <span class="text-gray-300">|</span>
+                    <span :class="!isMonteCarlo ? 'text-indigo-600 font-bold' : 'text-gray-400 font-medium'"
+                        >常態近似 (快速)</span
+                    >
+                </div>
+
+                <div
+                    v-if="isMonteCarlo"
+                    class="flex items-center gap-2 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-100"
+                >
+                    <span class="text-sm text-emerald-700 font-medium">模擬次數:</span>
+                    <select
+                        v-model.number="mcIterations"
+                        class="bg-white border border-emerald-300 text-emerald-800 text-sm rounded focus:ring-emerald-500 focus:border-emerald-500 block p-1 outline-none cursor-pointer"
+                    >
+                        <option value="1000">1,000 次</option>
+                        <option value="10000">10,000 次 (推薦)</option>
+                        <option value="50000">50,000 次</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="stat-card p-6 rounded-2xl shadow-xl mb-8 text-white relative">
+                <div
+                    class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-white/20 pb-4"
+                >
+                    <h2 class="text-xl font-bold flex items-center"><span class="mr-2">👤</span> 角色屬性與自動配點</h2>
+
+                    <div class="flex items-center gap-3 bg-white/10 p-2 rounded-lg border border-white/20 mt-4 md:mt-0">
+                        <span class="text-xs font-bold text-yellow-300">升級分配 (總和 5)</span>
+                        <div class="flex gap-2 items-center text-xs">
+                            LUK:
+                            <input
+                                v-model.number="autoDist.luk"
+                                type="number"
+                                class="w-8 text-center bg-black/30 rounded outline-none border border-white/20"
+                            />
+                            DEX:
+                            <input
+                                v-model.number="autoDist.dex"
+                                type="number"
+                                class="w-8 text-center bg-black/30 rounded outline-none border border-white/20"
+                            />
+                            STR:
+                            <input
+                                v-model.number="autoDist.str"
+                                type="number"
+                                class="w-8 text-center bg-black/30 rounded outline-none border border-white/20"
+                            />
+                        </div>
+                        <div class="flex gap-1 ml-2">
+                            <button
+                                @click="levelDown"
+                                class="bg-red-500/80 hover:bg-red-500 text-white px-2 py-1 rounded text-sm font-bold transition"
+                                title="等級 -1 並扣除屬性"
+                            >
+                                -
+                            </button>
+                            <button
+                                @click="levelUp"
+                                class="bg-green-500/80 hover:bg-green-500 text-white px-2 py-1 rounded text-sm font-bold transition"
+                                title="等級 +1 並增加屬性"
+                            >
+                                +
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-9 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-yellow-300 mb-1">等級 (Lv)</label>
+                        <input
+                            v-model.number="char.level"
+                            type="number"
+                            class="w-full p-2 rounded bg-yellow-400/20 border border-yellow-400/50 focus:bg-yellow-400/40 outline-none text-white text-lg font-bold"
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-xs opacity-80 mb-1">幸運 (LUK)</label>
+                        <input
+                            v-model.number="char.luk"
+                            type="number"
+                            class="w-full p-2 rounded bg-white/20 border border-white/30 focus:bg-white/40 outline-none text-white"
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-xs opacity-80 mb-1">敏捷 (DEX)</label>
+                        <input
+                            v-model.number="char.dex"
+                            type="number"
+                            class="w-full p-2 rounded bg-white/20 border border-white/30 focus:bg-white/40 outline-none text-white"
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-xs opacity-80 mb-1">力量 (STR)</label>
+                        <input
+                            v-model.number="char.str"
+                            type="number"
+                            class="w-full p-2 rounded bg-white/20 border border-white/30 focus:bg-white/40 outline-none text-white"
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-cyan-300 mb-1" title="裝備、藥水或技能提供的額外命中"
+                            >額外命中 (+ACC)</label
+                        >
+                        <input
+                            v-model.number="char.extraAcc"
+                            type="number"
+                            class="w-full p-2 rounded bg-cyan-400/20 border border-cyan-400/50 focus:bg-cyan-400/40 outline-none text-white"
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-xs opacity-80 mb-1">技能威力 (%)</label>
+                        <input
+                            v-model.number="char.skillPower"
+                            type="number"
+                            class="w-full p-2 rounded bg-white/20 border border-white/30 focus:bg-white/40 outline-none text-white"
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-green-300 mb-1">攻擊段數</label>
+                        <input
+                            v-model.number="char.hits"
+                            type="number"
+                            class="w-full p-2 rounded bg-green-400/20 border border-green-400/50 focus:bg-green-400/40 outline-none text-white"
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-yellow-300 mb-1">爆擊機率 (%)</label>
+                        <input
+                            v-model.number="char.critRate"
+                            type="number"
+                            class="w-full p-2 rounded bg-yellow-400/20 border border-yellow-400/50 focus:bg-yellow-400/40 outline-none text-white"
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-yellow-300 mb-1">爆擊額外 (%)</label>
+                        <input
+                            v-model.number="char.critExtraDmg"
+                            type="number"
+                            class="w-full p-2 rounded bg-yellow-400/20 border border-yellow-400/50 focus:bg-yellow-400/40 outline-none text-white"
+                        />
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-white/20 flex flex-wrap gap-4 items-end">
+                    <div class="flex-grow">
+                        <label class="block text-xs opacity-80 mb-2">攻擊力 (ATK) 分項</label>
+                        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                            <div v-for="(val, key) in char.atkParts" :key="key">
+                                <label class="block text-[10px] uppercase opacity-70">{{ translateAtk(key) }}</label>
+                                <input
+                                    v-model.number="char.atkParts[key]"
+                                    type="number"
+                                    class="w-full p-2 rounded bg-white/10 border border-white/20 focus:bg-white/30 outline-none text-sm text-white"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right pb-2 flex flex-col gap-1">
+                        <div class="text-sm font-medium text-cyan-200">
+                            總命中 (ACC)：<span class="text-xl font-bold text-cyan-400">{{ totalAcc }}</span>
+                        </div>
+                        <div>
+                            <span class="text-sm font-medium">總攻擊力：</span>
+                            <span class="text-3xl font-bold text-yellow-300">{{ totalAtk }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-md mb-8 border border-gray-100">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">新增怪物與分析</h2>
+                <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
+                    <div class="col-span-2 md:col-span-1">
+                        <label class="block text-sm font-medium text-gray-600 mb-1">怪物名稱</label>
+                        <input
+                            v-model="newMob.name"
+                            type="text"
+                            class="w-full p-2 border rounded border-gray-300 input-focus text-sm"
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">怪物等級</label>
+                        <input
+                            v-model.number="newMob.level"
+                            type="number"
+                            class="w-full p-2 border rounded border-gray-300 input-focus text-sm"
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">血量 (HP)</label>
+                        <input
+                            v-model.number="newMob.hp"
+                            type="number"
+                            class="w-full p-2 border rounded border-gray-300 input-focus text-sm"
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">物防</label>
+                        <input
+                            v-model.number="newMob.def"
+                            type="number"
+                            class="w-full p-2 border rounded border-gray-300 input-focus text-sm"
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-1 text-cyan-600 font-bold"
+                            >迴避率</label
+                        >
+                        <input
+                            v-model.number="newMob.avoid"
+                            type="number"
+                            class="w-full p-2 border rounded border-cyan-300 bg-cyan-50 input-focus text-sm"
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">經驗值</label>
+                        <input
+                            v-model.number="newMob.exp"
+                            type="number"
+                            class="w-full p-2 border rounded border-gray-300 input-focus text-sm"
+                        />
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button
+                        @click="addMob"
+                        class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded shadow transition font-medium ml-auto"
+                    >
+                        新增怪物
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+                <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                    <h2 class="text-lg font-bold text-gray-700">經驗效率排行</h2>
+                    <button
+                        @click="clearAll"
+                        class="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-1 rounded transition font-medium border border-red-200 ml-auto text-sm"
+                    >
+                        清空資料
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-600 uppercase">
+                                <th class="p-4 border-b">排名</th>
+                                <th class="p-4 border-b">怪物資訊</th>
+                                <th class="p-4 border-b min-w-[200px]">詳細傷害區間 (單擊總和)</th>
+                                <th class="p-4 border-b">推算機率串 (%)</th>
+                                <th class="p-4 border-b text-right">期望次數</th>
+                                <th class="p-4 border-b text-right text-indigo-600 font-bold">每下經驗</th>
+                                <th class="p-4 border-b text-center">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr
+                                v-for="(m, index) in mobs"
+                                :key="index"
+                                :class="index === 0 ? 'bg-amber-50' : 'hover:bg-gray-50'"
+                            >
+                                <td class="p-4 border-b font-bold text-center">
+                                    <span v-if="index === 0" class="text-xl">🏆</span>
+                                    <span v-else>{{ index + 1 }}</span>
+                                </td>
+                                <td class="p-4 border-b">
+                                    <div class="font-bold text-base">{{ m.name }}</div>
+                                    <div class="text-[12px] text-gray-400">
+                                        Lv.{{ m.level }} / HP: {{ m.hp }} / Def: {{ m.def }} / Exp: {{ m.exp }}
+                                    </div>
+                                    <div class="mt-1">
+                                        <span
+                                            v-if="m.dmg.actualHitRate >= 1"
+                                            class="text-[12px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded border border-green-200"
+                                            >100% 必中</span
+                                        >
+                                        <span
+                                            v-else-if="m.dmg.actualHitRate <= 0"
+                                            class="text-[12px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded border border-red-200 font-bold"
+                                            >絕對 Miss</span
+                                        >
+                                        <span
+                                            v-else
+                                            class="text-[12px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded border border-yellow-200"
+                                        >
+                                            命中率: {{ (m.dmg.actualHitRate * 100).toFixed(1) }}%
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="p-4 border-b text-xs font-mono leading-tight">
+                                    <div class="text-gray-500">
+                                        全沒爆:
+                                        <span class="text-blue-500">{{ m.dmg.totalNoCritMin }}</span>
+                                        ~
+                                        <span class="text-red-400">{{ m.dmg.totalNoCritMax }}</span>
+                                    </div>
+                                    <div class="text-orange-600">
+                                        全爆擊:
+                                        <span class="text-blue-500">{{ m.dmg.totalAllCritMin }}</span>
+                                        ~
+                                        <span class="text-red-500 font-bold">{{ m.dmg.totalAllCritMax }}</span>
+                                    </div>
+                                    <div class="text-indigo-600 font-bold mt-1 pt-1 border-t border-gray-200">
+                                        期望值: {{ m.dmg.mean_total.toFixed(1) }}
+                                    </div>
+                                </td>
+                                <td class="p-4 border-b">
+                                    <div
+                                        class="text-[14px] text-gray-500 max-w-[200px] break-words font-mono"
+                                        :title="m.probString"
+                                    >
+                                        <span v-if="m.dmg.actualHitRate <= 0" class="text-red-500 font-bold"
+                                            >打不到怪啦！</span
+                                        >
+                                        <span v-else>{{ m.probString }}</span>
+                                    </div>
+                                </td>
+                                <td class="p-4 border-b text-right font-mono text-gray-600">
+                                    <span v-if="m.dmg.actualHitRate <= 0">∞</span>
+                                    <span v-else>{{ m.expectedHits.toFixed(3) }}</span>
+                                </td>
+                                <td
+                                    class="p-4 border-b text-right font-bold font-mono text-lg"
+                                    :class="m.dmg.actualHitRate <= 0 ? 'text-gray-400' : 'text-indigo-600'"
+                                >
+                                    {{ m.expPerHit.toFixed(2) }}
+                                </td>
+                                <td class="p-4 border-b text-center">
+                                    <button @click="deleteMob(index)" class="text-red-400 hover:text-red-600">
+                                        刪除
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr v-if="mobs.length === 0">
+                                <td colspan="7" class="p-8 text-center text-gray-400">
+                                    目前尚無數據，請從上方新增怪物
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const { createApp, ref, computed, onMounted, watch } = Vue;
+
+            function normDistCDF(x, mean, sd) {
+                if (sd === 0) return x <= mean ? 1 : 0;
+                let z = (x - mean) / sd;
+                let sign = z < 0 ? -1 : 1;
+                z = Math.abs(z) / Math.sqrt(2.0);
+                let t = 1.0 / (1.0 + 0.3275911 * z);
+                let y =
+                    1.0 -
+                    ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) *
+                        t *
+                        Math.exp(-z * z);
+                return 0.5 * (1.0 + sign * y);
+            }
+
+            createApp({
+                setup() {
+                    const isMonteCarlo = ref(false);
+                    const mcIterations = ref(10000);
+
+                    // 自動配點設定
+                    const autoDist = ref({ luk: 5, dex: 0, str: 0 });
+
+                    const char = ref({
+                        level: 50,
+                        luk: 250,
+                        dex: 80,
+                        str: 4,
+                        extraAcc: 0, // 新增：額外命中率 (藥水/裝備)
+                        skillPower: 150,
+                        hits: 2,
+                        critRate: 50,
+                        critExtraDmg: 100,
+                        atkParts: {
+                            weapon: 40,
+                            glove: 10,
+                            potion: 5,
+                            stars: 27,
+                            others: 0,
+                        },
+                    });
+
+                    const newMob = ref({
+                        name: "發條熊",
+                        level: 50,
+                        hp: 3000,
+                        def: 50,
+                        avoid: 20,
+                        exp: 100,
+                    });
+                    const mobs = ref([]);
+
+                    // --- 【核心修正 1：總命中率計算 (DEX*0.6 + LUK*0.3 + 額外命中)】 ---
+                    const totalAcc = computed(() => {
+                        const baseAcc = Math.floor(char.value.dex * 0.6 + char.value.luk * 0.3);
+                        const extra = parseFloat(char.value.extraAcc) || 0;
+                        return baseAcc + extra;
+                    });
+
+                    const totalAtk = computed(() =>
+                        Object.values(char.value.atkParts).reduce((a, b) => a + (parseFloat(b) || 0), 0),
+                    );
+                    const translateAtk = (key) =>
+                        ({
+                            weapon: "武器",
+                            glove: "手套",
+                            potion: "藥水",
+                            stars: "飛鏢",
+                            others: "其他",
+                        })[key] || key;
+
+                    // --- 【核心修正 2：升級與降級邏輯】 ---
+                    const levelUp = () => {
+                        const totalPoints = autoDist.value.luk + autoDist.value.dex + autoDist.value.str;
+                        if (totalPoints > 5) {
+                            alert("升級點數總和不能超過 5 點！");
+                            return;
+                        }
+                        char.value.level += 1;
+                        char.value.luk += autoDist.value.luk;
+                        char.value.dex += autoDist.value.dex;
+                        char.value.str += autoDist.value.str;
+                    };
+
+                    const levelDown = () => {
+                        if (char.value.level <= 1) return;
+                        char.value.level -= 1;
+                        // 扣除屬性，但不允許扣到負數
+                        char.value.luk = Math.max(4, char.value.luk - autoDist.value.luk);
+                        char.value.dex = Math.max(4, char.value.dex - autoDist.value.dex);
+                        char.value.str = Math.max(4, char.value.str - autoDist.value.str);
+                    };
+
+                    const calculateDamage = (mob) => {
+                        const lvDiff = Math.max(0, mob.level - char.value.level);
+
+                        // --- 命中率判定使用 totalAcc.value ---
+                        const reqHit = (mob.avoid * (55 + 2 * lvDiff)) / 15;
+                        const halfReq = reqHit / 2;
+
+                        let p_hit = 1;
+                        if (totalAcc.value >= reqHit) p_hit = 1;
+                        else if (totalAcc.value <= halfReq) p_hit = 0;
+                        else p_hit = (totalAcc.value - halfReq) / halfReq;
+
+                        const actualHitRate = Math.max(0, Math.min(1, p_hit));
+
+                        const levelMult = 1 - 0.01 * lvDiff;
+                        const atk = totalAtk.value;
+                        const luk = char.value.luk;
+                        const def = mob.def;
+                        const skillMult = char.value.skillPower / 100;
+                        const critSkillMult = (char.value.skillPower + char.value.critExtraDmg) / 100;
+                        const p_crit = (char.value.critRate || 0) / 100;
+                        const n = char.value.hits || 1;
+
+                        const baseStatMax = Math.floor((5.25 * luk * atk) / 100);
+                        const baseStatMin = Math.floor((2.625 * luk * atk) / 100);
+                        const rawMax = baseStatMax * levelMult - def * 0.55;
+                        const rawMin = baseStatMin * levelMult - def * 0.55;
+
+                        const NC_lo = Math.max(0, Math.floor(rawMin * skillMult));
+                        const NC_hi = Math.max(1, Math.floor(rawMax * skillMult));
+                        const C_lo = Math.max(0, Math.floor(rawMin * critSkillMult));
+                        const C_hi = Math.max(1, Math.floor(rawMax * critSkillMult));
+
+                        const mu_success = (1 - p_crit) * ((NC_lo + NC_hi) / 2) + p_crit * ((C_lo + C_hi) / 2);
+                        const var_success =
+                            (1 - p_crit) * (Math.pow(NC_hi - NC_lo, 2) / 12) +
+                            p_crit * (Math.pow(C_hi - C_lo, 2) / 12) +
+                            p_crit * (1 - p_crit) * Math.pow((C_lo + C_hi) / 2 - (NC_lo + NC_hi) / 2, 2);
+
+                        const mu_actual = actualHitRate * mu_success;
+                        const var_actual =
+                            actualHitRate * var_success + actualHitRate * (1 - actualHitRate) * Math.pow(mu_success, 2);
+
+                        const mean_total = n * mu_actual;
+                        const sd = Math.sqrt(n * var_actual);
+
+                        return {
+                            NC_lo,
+                            NC_hi,
+                            C_lo,
+                            C_hi,
+                            totalNoCritMin: NC_lo * n,
+                            totalNoCritMax: NC_hi * n,
+                            totalAllCritMin: C_lo * n,
+                            totalAllCritMax: C_hi * n,
+                            mu_actual,
+                            var_actual,
+                            mean_total,
+                            sd,
+                            p_crit,
+                            n,
+                            actualHitRate,
+                        };
+                    };
+
+                    const getNormalApproximationProbabilities = (hp, dmg) => {
+                        const { mu_actual, var_actual, mean_total, sd, n, actualHitRate } = dmg;
+                        if (actualHitRate <= 0 || mean_total <= 0) return "0";
+
+                        let prob1 = sd === 0 ? (hp <= mean_total ? 1 : 0) : 1 - normDistCDF(hp, mean_total, sd);
+                        prob1 = Math.max(0, Math.min(1, prob1));
+                        if (prob1 >= 0.999) return "100";
+
+                        let probs = [(prob1 * 100).toFixed(2)];
+                        let currentCumP = prob1;
+                        let castTimes = 2;
+
+                        while (currentCumP < 0.999 && castTimes <= 10) {
+                            const current_n = n * castTimes;
+                            const current_mean = current_n * mu_actual;
+                            const current_sd = Math.sqrt(current_n * var_actual);
+                            let p_n =
+                                current_sd === 0
+                                    ? hp <= current_mean
+                                        ? 1
+                                        : 0
+                                    : 1 - normDistCDF(hp, current_mean, current_sd);
+                            p_n = Math.max(currentCumP, Math.min(1, p_n));
+                            probs.push((p_n * 100).toFixed(2));
+                            currentCumP = p_n;
+                            castTimes++;
+                        }
+                        if (currentCumP < 0.999) probs.push("100.00");
+                        return probs.join(",");
+                    };
+
+                    const getMonteCarloProbabilities = (hp, dmg) => {
+                        const { NC_lo, NC_hi, C_lo, C_hi, p_crit, n, actualHitRate } = dmg;
+                        if (actualHitRate <= 0) return "0";
+
+                        const iterations = mcIterations.value || 10000;
+                        let cumulativeKills = new Array(11).fill(0);
+
+                        for (let i = 0; i < iterations; i++) {
+                            let hpLeft = hp;
+                            let casts = 0;
+
+                            while (hpLeft > 0 && casts < 10) {
+                                casts++;
+                                let castDamage = 0;
+                                for (let h = 0; h < n; h++) {
+                                    if (Math.random() <= actualHitRate) {
+                                        if (Math.random() < p_crit) {
+                                            castDamage += Math.floor(Math.random() * (C_hi - C_lo + 1)) + C_lo;
+                                        } else {
+                                            castDamage += Math.floor(Math.random() * (NC_hi - NC_lo + 1)) + NC_lo;
+                                        }
+                                    }
+                                }
+                                hpLeft -= castDamage;
+                                if (hpLeft <= 0) {
+                                    for (let c = casts; c <= 10; c++) cumulativeKills[c]++;
+                                    break;
+                                }
+                            }
+                        }
+
+                        let probs = [];
+                        for (let c = 1; c <= 10; c++) {
+                            let prob = cumulativeKills[c] / iterations;
+                            probs.push((prob * 100).toFixed(2));
+                            if (prob >= 0.999) break;
+                        }
+                        if (cumulativeKills[probs.length] / iterations < 0.999) probs.push("100.00");
+                        return probs.join(",");
+                    };
+
+                    const getMetrics = (mob) => {
+                        const dmg = calculateDamage(mob);
+                        if (dmg.actualHitRate <= 0)
+                            return {
+                                dmg,
+                                probString: "0.00",
+                                expectedHits: 9999,
+                                expPerHit: 0,
+                            };
+                        let probStr = isMonteCarlo.value
+                            ? getMonteCarloProbabilities(mob.hp, dmg)
+                            : getNormalApproximationProbabilities(mob.hp, dmg);
+                        const pArr = probStr.split(",").map((v) => parseFloat(v) / 100);
+                        let expectedHits = 0;
+                        let prevP = 0;
+                        pArr.forEach((p, i) => {
+                            let exactP = Math.max(0, p - prevP);
+                            expectedHits += (i + 1) * exactP;
+                            prevP = p;
+                        });
+                        if (expectedHits <= 0) expectedHits = 9999;
+                        return {
+                            dmg,
+                            probString: probStr,
+                            expectedHits,
+                            expPerHit: mob.exp / expectedHits,
+                        };
+                    };
+
+                    const saveData = () => {
+                        localStorage.setItem(
+                            "ms_mob_data_v10",
+                            JSON.stringify({
+                                char: char.value,
+                                mobs: mobs.value,
+                                autoDist: autoDist.value,
+                                isMonteCarlo: isMonteCarlo.value,
+                                mcIterations: mcIterations.value,
+                            }),
+                        );
+                    };
+
+                    const addMob = () => {
+                        if (!newMob.value.name) return alert("請輸入怪物名稱");
+                        const metrics = getMetrics(newMob.value);
+                        mobs.value.push(JSON.parse(JSON.stringify({ ...newMob.value, ...metrics })));
+                        updateAll();
+                    };
+
+                    const updateAll = () => {
+                        mobs.value = mobs.value.map((m) => ({ ...m, ...getMetrics(m) }));
+                        mobs.value.sort((a, b) => b.expPerHit - a.expPerHit);
+                        saveData();
+                    };
+
+                    const deleteMob = (i) => {
+                        mobs.value.splice(i, 1);
+                        updateAll();
+                    };
+                    const clearAll = () => {
+                        if (confirm("確定清空？")) {
+                            mobs.value = [];
+                            updateAll();
+                        }
+                    };
+
+                    onMounted(() => {
+                        const saved = localStorage.getItem("ms_mob_data_v10");
+                        if (saved) {
+                            try {
+                                const parsed = JSON.parse(saved);
+                                char.value = parsed.char;
+                                mobs.value = parsed.mobs;
+                                if (parsed.autoDist) autoDist.value = parsed.autoDist;
+                                if (parsed.isMonteCarlo !== undefined) isMonteCarlo.value = parsed.isMonteCarlo;
+                                if (parsed.mcIterations) mcIterations.value = parsed.mcIterations;
+                            } catch (e) {
+                                console.error("解析存檔失敗", e);
+                            }
+                        }
+                    });
+
+                    watch(
+                        [char, isMonteCarlo, mcIterations, autoDist],
+                        () => {
+                            updateAll();
+                        },
+                        { deep: true },
+                    );
+
+                    return {
+                        char,
+                        newMob,
+                        mobs,
+                        totalAtk,
+                        translateAtk,
+                        addMob,
+                        updateAll,
+                        deleteMob,
+                        clearAll,
+                        isMonteCarlo,
+                        mcIterations,
+                        autoDist,
+                        levelUp,
+                        levelDown,
+                        totalAcc,
+                    };
+                },
+            }).mount("#app");
+        </script>
+    </body>
+</html>
