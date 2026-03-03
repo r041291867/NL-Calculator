@@ -50,12 +50,12 @@
                             class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300"
                         ></label>
                     </div>
-                    <span :class="isMonteCarlo ? 'text-emerald-600 font-bold' : 'text-gray-400 font-medium'"
-                        >蒙地卡羅 (暴力模擬)</span
-                    >
-                    <span class="text-gray-300">|</span>
                     <span :class="!isMonteCarlo ? 'text-indigo-600 font-bold' : 'text-gray-400 font-medium'"
                         >常態近似 (快速)</span
+                    >
+                    <span class="text-gray-300">|</span>
+                    <span :class="isMonteCarlo ? 'text-emerald-600 font-bold' : 'text-gray-400 font-medium'"
+                        >蒙地卡羅 (暴力模擬)</span
                     >
                 </div>
 
