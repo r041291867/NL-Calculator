@@ -290,6 +290,8 @@
                             >
                                 <td class="p-4 border-b font-bold text-center">
                                     <span v-if="index === 0" class="text-xl">🏆</span>
+                                    <span v-else-if="index === 1" class="text-xl">🥈</span>
+                                    <span v-else-if="index === 2" class="text-xl">🥉</span>
                                     <span v-else>{{ index + 1 }}</span>
                                 </td>
                                 <td class="p-4 border-b">
