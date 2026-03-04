@@ -3,35 +3,14 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>標賊傷害效益計算機 (FP Refactored)</title>
-        <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+        <title>標賊傷害效益計算機 (模組化版)</title>
         <script src="https://cdn.tailwindcss.com"></script>
-        <style>
-            .input-focus:focus {
-                outline: 2px solid #6366f1;
-                border-color: transparent;
-            }
-            .stat-card {
-                background: linear-gradient(135deg, #1e3a8a 0%, #4338ca 100%);
-            }
-            .toggle-checkbox:checked {
-                right: 0;
-                border-color: #10b981;
-            }
-            .toggle-checkbox:checked + .toggle-label {
-                background-color: #10b981;
-            }
-            input[type="number"]::-webkit-inner-spin-button,
-            input[type="number"]::-webkit-outer-spin-button {
-                -webkit-appearance: none;
-                margin: 0;
-            }
-        </style>
+        <link rel="stylesheet" href="./style.css" />
     </head>
     <body class="bg-gray-50 text-gray-800 p-4 md:p-8">
-        <div id="app" class="max-w-7xl mx-auto">
+        <div id="app" class="max-w-7xl mx-auto relative">
             <div
-                class="bg-white p-4 rounded-xl shadow-md mb-6 border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4"
+                class="sticky top-4 md:top-8 z-40 bg-white/85 backdrop-blur-md p-4 rounded-xl shadow-lg mb-6 border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4"
             >
                 <div class="flex items-center gap-4">
                     <h2 class="font-bold text-gray-700 text-lg">⚙️ 運算引擎：</h2>
@@ -245,93 +224,47 @@
                 </div>
             </div>
 
-            <div class="bg-white p-6 rounded-xl shadow-md mb-8 border border-gray-100">
-                <h2 class="text-xl font-semibold mb-4 text-gray-700">新增怪物與分析</h2>
-                <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
-                    <div class="col-span-2 md:col-span-1">
-                        <label class="block text-sm font-medium text-gray-600 mb-1">怪物名稱</label
-                        ><input
-                            v-model="newMob.name"
-                            type="text"
-                            class="w-full p-2 border rounded border-gray-300 input-focus text-sm"
-                        />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-1">怪物等級</label
-                        ><input
-                            v-model.number="newMob.level"
-                            type="number"
-                            class="w-full p-2 border rounded border-gray-300 input-focus text-sm"
-                        />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-1">血量 (HP)</label
-                        ><input
-                            v-model.number="newMob.hp"
-                            type="number"
-                            class="w-full p-2 border rounded border-gray-300 input-focus text-sm"
-                        />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-1">物防</label
-                        ><input
-                            v-model.number="newMob.def"
-                            type="number"
-                            class="w-full p-2 border rounded border-gray-300 input-focus text-sm"
-                        />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-1 text-cyan-600 font-bold"
-                            >迴避率</label
-                        ><input
-                            v-model.number="newMob.avoid"
-                            type="number"
-                            class="w-full p-2 border rounded border-cyan-300 bg-cyan-50 input-focus text-sm"
-                        />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-1">經驗值</label
-                        ><input
-                            v-model.number="newMob.exp"
-                            type="number"
-                            class="w-full p-2 border rounded border-gray-300 input-focus text-sm"
-                        />
-                    </div>
-                </div>
-                <div class="flex gap-2">
-                    <button
-                        @click="handleAddMob"
-                        class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded shadow transition font-medium ml-auto"
-                    >
-                        新增怪物
-                    </button>
-                </div>
-            </div>
-
             <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
-                <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                    <h2 class="text-lg font-bold text-gray-700">經驗效率排行</h2>
-                    <div class="flex gap-2">
+                <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 flex-wrap gap-3">
+                    <h2 class="text-lg font-bold text-gray-700 flex items-center">📊 經驗效率排行</h2>
+
+                    <div class="flex gap-2 flex-wrap">
+                        <button
+                            @click="showAddMobDialog = true"
+                            class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg shadow-sm transition font-bold text-sm flex items-center gap-1 mr-2"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M12 4v16m8-8H4"
+                                ></path>
+                            </svg>
+                            新增怪物
+                        </button>
+
                         <button
                             @click="exportData"
-                            class="bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1 rounded transition border border-blue-200 text-sm font-medium"
+                            class="bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded transition border border-blue-200 text-sm font-medium"
                         >
-                            匯出資料
+                            匯出
                         </button>
                         <button
                             @click="importData"
-                            class="bg-green-50 hover:bg-green-100 text-green-600 px-3 py-1 rounded transition border border-green-200 text-sm font-medium"
+                            class="bg-green-50 hover:bg-green-100 text-green-600 px-3 py-1.5 rounded transition border border-green-200 text-sm font-medium"
                         >
-                            匯入資料
+                            匯入
                         </button>
                         <button
                             @click="clearAll"
-                            class="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-1 rounded transition font-medium border border-red-200 text-sm"
+                            class="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-1.5 rounded transition font-medium border border-red-200 text-sm"
                         >
                             清空
                         </button>
                     </div>
                 </div>
+
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse text-sm">
                         <thead>
@@ -447,17 +380,129 @@
                             </tr>
                             <tr v-if="computedMobs.length === 0">
                                 <td colspan="7" class="p-8 text-center text-gray-400">
-                                    目前尚無數據，請從上方新增怪物
+                                    目前尚無數據，請點擊上方「新增怪物」開始分析
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
+
+            <transition name="dialog">
+                <div
+                    v-if="showAddMobDialog"
+                    class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm"
+                    @click.self="showAddMobDialog = false"
+                >
+                    <transition name="dialog-content" appear>
+                        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden mx-4">
+                            <div class="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                                <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                    <svg
+                                        class="w-5 h-5 text-indigo-600"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                                        ></path>
+                                    </svg>
+                                    新增怪物分析
+                                </h3>
+                                <button
+                                    @click="showAddMobDialog = false"
+                                    class="text-gray-400 hover:text-gray-700 hover:bg-gray-200 p-1 rounded-full transition focus:outline-none"
+                                >
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M6 18L18 6M6 6l12 12"
+                                        ></path>
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <div class="p-6">
+                                <div class="grid grid-cols-2 gap-5 mb-6">
+                                    <div class="col-span-2">
+                                        <label class="block text-sm font-semibold text-gray-700 mb-1">怪物名稱</label>
+                                        <input
+                                            v-model="newMob.name"
+                                            type="text"
+                                            class="w-full p-2.5 border rounded-lg border-gray-300 input-focus text-sm bg-gray-50"
+                                            placeholder="例如：雪吉拉"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-1">怪物等級</label>
+                                        <input
+                                            v-model.number="newMob.level"
+                                            type="number"
+                                            class="w-full p-2.5 border rounded-lg border-gray-300 input-focus text-sm bg-gray-50"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-1">血量 (HP)</label>
+                                        <input
+                                            v-model.number="newMob.hp"
+                                            type="number"
+                                            class="w-full p-2.5 border rounded-lg border-gray-300 input-focus text-sm bg-gray-50"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-1">物理防禦</label>
+                                        <input
+                                            v-model.number="newMob.def"
+                                            type="number"
+                                            class="w-full p-2.5 border rounded-lg border-gray-300 input-focus text-sm bg-gray-50"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-cyan-700 mb-1">迴避率</label>
+                                        <input
+                                            v-model.number="newMob.avoid"
+                                            type="number"
+                                            class="w-full p-2.5 border rounded-lg border-cyan-300 bg-cyan-50 input-focus text-sm"
+                                        />
+                                    </div>
+                                    <div class="col-span-2">
+                                        <label class="block text-sm font-semibold text-gray-700 mb-1">提供經驗值</label>
+                                        <input
+                                            v-model.number="newMob.exp"
+                                            type="number"
+                                            class="w-full p-2.5 border rounded-lg border-gray-300 input-focus text-sm bg-gray-50"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div class="flex justify-end gap-3 pt-2">
+                                    <button
+                                        @click="showAddMobDialog = false"
+                                        class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition font-medium text-sm"
+                                    >
+                                        取消
+                                    </button>
+                                    <button
+                                        @click="handleAddMob"
+                                        class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition font-medium text-sm flex items-center gap-2"
+                                    >
+                                        新增至排行榜
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </transition>
+                </div>
+            </transition>
         </div>
 
         <script type="module">
-            // 從 ESM 版本的 CDN 載入 Vue
             import {
                 createApp,
                 ref,
@@ -465,18 +510,17 @@
                 onMounted,
                 watch,
             } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
-
-            // 匯入剛剛切分的純函數檔案
             import { StatsLogic, BattleLogic } from "./calculatorLogic.js";
 
             createApp({
                 setup() {
+                    const showAddMobDialog = ref(false);
                     const isMonteCarlo = ref(false);
                     const mcIterations = ref(10000);
                     const useShadowPartner = ref(false);
                     const shadowPartnerDmg = ref(50);
                     const autoDist = ref({ luk: 5, dex: 0, str: 0 });
-                    const newMob = ref({ name: "發條熊", level: 30, hp: 950, def: 38, avoid: 10, exp: 60 });
+                    const newMob = ref({ name: "", level: 30, hp: 1000, def: 10, avoid: 10, exp: 50 });
 
                     const char = ref({
                         level: 50,
@@ -532,6 +576,8 @@
                     const handleAddMob = () => {
                         if (!newMob.value.name) return alert("請輸入怪物名稱");
                         rawMobs.value = [...rawMobs.value, { ...newMob.value }];
+                        showAddMobDialog.value = false;
+                        newMob.value.name = "";
                     };
 
                     const handleDeleteMob = (index) => {
@@ -632,6 +678,7 @@
                     };
 
                     return {
+                        showAddMobDialog,
                         char,
                         newMob,
                         rawMobs,
