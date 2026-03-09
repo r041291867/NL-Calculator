@@ -3,7 +3,7 @@
 export const StatsLogic = {
     calcTotalAcc: (dex, luk, extraAcc) => Math.floor(dex * 0.6 + luk * 0.3) + (parseFloat(extraAcc) || 0),
     calcTotalAtk: (atkParts) => Object.values(atkParts).reduce((sum, val) => sum + (parseFloat(val) || 0), 0),
-
+    calcTotalExtraAcc: (extraAcc) => Object.values(extraAcc).reduce((sum, val) => sum + (parseFloat(val) || 0), 0),
     levelUp: (char, autoDist) => {
         if (autoDist.luk + autoDist.dex + autoDist.str > 5) throw new Error("點數總和不能超過 5！");
         return {
