@@ -308,8 +308,8 @@
                                         >前10次攻擊累積擊殺率</span
                                     >
                                 </th>
-                                <th class="p-4 border-b text-right">期望次數</th>
-                                <th class="p-4 border-b text-right text-indigo-600 font-bold">每下經驗</th>
+                                <th class="p-4 border-b text-right">期望擊殺次數</th>
+                                <th class="p-4 border-b text-right text-indigo-600 font-bold">期望每下經驗值</th>
                                 <th class="p-4 border-b text-center">操作</th>
                             </tr>
                         </thead>
@@ -328,6 +328,10 @@
                                 <td class="p-4 border-b">
                                     <div class="font-bold text-base flex items-center gap-1">
                                         {{ m.name }}
+                                        <span class="text-gray-500 text-[14px]">
+                                            {{ m.level ? `Lv. ${m.level}` : m.stages? `Lv. ${m.stages.reduce((max, s) =>
+                                            Math.max(max, s.level), 0)}` : "" }}
+                                        </span>
                                         <span
                                             v-if="m.stages && m.stages.length > 1"
                                             class="bg-purple-100 text-purple-700 text-[10px] px-1.5 py-0.5 rounded"
