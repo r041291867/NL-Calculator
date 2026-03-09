@@ -7,49 +7,98 @@
         <script src="https://cdn.tailwindcss.com"></script>
         <link rel="stylesheet" href="./style.css" />
     </head>
-    <body class="bg-gray-50 text-gray-800 p-4 md:p-8">
+    <body class="bg-gray-50 text-gray-800 p-4 md:p-8 pt-24 md:pt-24">
         <div id="app" class="max-w-7xl mx-auto relative">
             <div
-                class="sticky top-4 md:top-8 z-40 bg-white/85 backdrop-blur-md p-4 rounded-xl shadow-lg mb-6 border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4"
+                class="fixed top-0 left-0 right-0 z-40 bg-white/85 backdrop-blur-md border-b border-gray-200 shadow-sm px-4 py-3"
             >
-                <div class="flex items-center gap-4">
-                    <h2 class="font-bold text-gray-700 text-lg">⚙️ 運算引擎：</h2>
-                    <div
-                        class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in"
-                    >
-                        <input
-                            type="checkbox"
-                            id="engine-toggle"
-                            v-model="isMonteCarlo"
-                            class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 z-10 top-0 left-0 checked:translate-x-6 checked:border-emerald-500 border-gray-300"
-                        />
-                        <label
-                            for="engine-toggle"
-                            class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300"
-                        ></label>
+                <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div class="flex items-center gap-4">
+                        <h2 class="font-bold text-gray-700 text-sm md:text-base hidden sm:block">⚙️ 運算引擎：</h2>
+                        <div
+                            class="relative inline-block w-10 mr-1 align-middle select-none transition duration-200 ease-in"
+                        >
+                            <input
+                                type="checkbox"
+                                id="engine-toggle"
+                                v-model="isMonteCarlo"
+                                class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 z-10 top-0 left-0 checked:translate-x-5 checked:border-emerald-500 border-gray-300"
+                            />
+                            <label
+                                for="engine-toggle"
+                                class="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300"
+                            ></label>
+                        </div>
+                        <span
+                            class="text-xs md:text-sm"
+                            :class="!isMonteCarlo ? 'text-indigo-600 font-bold' : 'text-gray-400 font-medium'"
+                        >
+                            常態近似
+                        </span>
+                        <span class="text-gray-300 text-xs">|</span>
+                        <span
+                            class="text-xs md:text-sm"
+                            :class="isMonteCarlo ? 'text-emerald-600 font-bold' : 'text-gray-400 font-medium'"
+                        >
+                            蒙地卡羅
+                        </span>
+
+                        <select
+                            v-if="isMonteCarlo"
+                            v-model.number="mcIterations"
+                            class="bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs rounded focus:ring-emerald-500 focus:border-emerald-500 block p-1 outline-none cursor-pointer ml-2"
+                        >
+                            <option value="1000">1,000 次</option>
+                            <option value="10000">10,000 次</option>
+                            <option value="50000">50,000 次</option>
+                        </select>
                     </div>
-                    <span :class="!isMonteCarlo ? 'text-indigo-600 font-bold' : 'text-gray-400 font-medium'"
-                        >常態近似 (快速)</span
-                    >
-                    <span class="text-gray-300">|</span>
-                    <span :class="isMonteCarlo ? 'text-emerald-600 font-bold' : 'text-gray-400 font-medium'"
-                        >蒙地卡羅 (暴力模擬)</span
-                    >
-                </div>
-                <div
-                    v-if="isMonteCarlo"
-                    class="flex items-center gap-2 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-100"
-                >
-                    <span class="text-sm text-emerald-700 font-medium">模擬次數:</span>
-                    <select
-                        v-model.number="mcIterations"
-                        class="bg-white border border-emerald-300 text-emerald-800 text-sm rounded focus:ring-emerald-500 focus:border-emerald-500 block p-1 outline-none cursor-pointer"
-                    >
-                        <option value="1000">1,000 次</option>
-                        <option value="10000">10,000 次 (推薦)</option>
-                        <option value="50000">50,000 次</option>
-                        <option value="100000">100,000 次 (極限測試用)</option>
-                    </select>
+
+                    <div class="flex items-center gap-3 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">
+                        <div class="font-bold text-indigo-700 flex items-center gap-1">Lv: {{ char.level }}</div>
+
+                        <span class="text-xs font-bold text-indigo-700 flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                                ></path>
+                            </svg>
+                            升級配點
+                        </span>
+                        <div class="flex gap-2 items-center text-xs text-indigo-900 font-medium">
+                            LUK:
+                            <input
+                                v-model.number="autoDist.luk"
+                                type="number"
+                                class="w-8 text-center bg-white rounded border border-indigo-200 focus:border-indigo-500 outline-none"
+                            />
+                            DEX:
+                            <input
+                                v-model.number="autoDist.dex"
+                                type="number"
+                                class="w-8 text-center bg-white rounded border border-indigo-200 focus:border-indigo-500 outline-none"
+                            />
+                        </div>
+                        <div class="flex gap-1 border-l border-indigo-200 pl-3">
+                            <button
+                                @click="handleLevelDown"
+                                class="bg-red-500 hover:bg-red-600 text-white w-6 h-6 rounded flex items-center justify-center text-sm font-bold transition shadow-sm"
+                                title="降級 (Lv-1)"
+                            >
+                                -
+                            </button>
+                            <button
+                                @click="handleLevelUp"
+                                class="bg-green-500 hover:bg-green-600 text-white w-6 h-6 rounded flex items-center justify-center text-sm font-bold transition shadow-sm"
+                                title="升級 (Lv+1)"
+                            >
+                                +
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -58,35 +107,31 @@
                     class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-white/20 pb-4"
                 >
                     <h2 class="text-xl font-bold flex items-center"><span class="mr-2">👤</span> 角色屬性與自動配點</h2>
-                    <div class="flex items-center gap-3 bg-white/10 p-2 rounded-lg border border-white/20 mt-4 md:mt-0">
-                        <span class="text-xs font-bold text-yellow-300">升級分配 (總和 5)</span>
-                        <div class="flex gap-2 items-center text-xs">
-                            LUK:
+                    <div class="border-white/20 flex flex-wrap gap-4 items-center">
+                        <div
+                            class="flex items-center gap-2 bg-purple-600/30 p-2 rounded-lg border border-purple-400/50"
+                        >
                             <input
-                                v-model.number="autoDist.luk"
-                                type="number"
-                                class="w-8 text-center bg-black/30 rounded outline-none border border-white/20"
+                                type="checkbox"
+                                id="shadow-partner"
+                                v-model="useShadowPartner"
+                                class="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded cursor-pointer"
                             />
-                            DEX:
-                            <input
-                                v-model.number="autoDist.dex"
-                                type="number"
-                                class="w-8 text-center bg-black/30 rounded outline-none border border-white/20"
-                            />
-                        </div>
-                        <div class="flex gap-1 ml-2">
-                            <button
-                                @click="handleLevelDown"
-                                class="bg-red-500/80 hover:bg-red-500 text-white px-2 py-1 rounded text-sm font-bold transition"
+                            <label
+                                for="shadow-partner"
+                                class="text-sm font-bold text-purple-200 cursor-pointer flex items-center gap-1"
+                                >影分身</label
                             >
-                                -
-                            </button>
-                            <button
-                                @click="handleLevelUp"
-                                class="bg-green-500/80 hover:bg-green-500 text-white px-2 py-1 rounded text-sm font-bold transition"
-                            >
-                                +
-                            </button>
+                            <span class="text-xs text-white/70 ml-2">傷害比例:</span>
+                            <div class="flex items-center text-xs">
+                                <input
+                                    v-model.number="shadowPartnerDmg"
+                                    :disabled="!useShadowPartner"
+                                    type="number"
+                                    class="w-12 p-1 text-center rounded bg-white/20 border border-white/30 outline-none text-white disabled:opacity-50"
+                                />
+                                <span class="ml-1">%</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -155,32 +200,6 @@
                             type="number"
                             class="w-full p-2 rounded bg-yellow-400/20 border border-yellow-400/50 outline-none text-white"
                         />
-                    </div>
-                </div>
-
-                <div class="mt-4 pt-4 border-t border-white/20 flex flex-wrap gap-4 items-center">
-                    <div class="flex items-center gap-2 bg-purple-600/30 p-2 rounded-lg border border-purple-400/50">
-                        <input
-                            type="checkbox"
-                            id="shadow-partner"
-                            v-model="useShadowPartner"
-                            class="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded cursor-pointer"
-                        />
-                        <label
-                            for="shadow-partner"
-                            class="text-sm font-bold text-purple-200 cursor-pointer flex items-center gap-1"
-                            >👥 啟用影分身</label
-                        >
-                        <span class="text-xs text-white/70 ml-2">傷害比例:</span>
-                        <div class="flex items-center text-xs">
-                            <input
-                                v-model.number="shadowPartnerDmg"
-                                :disabled="!useShadowPartner"
-                                type="number"
-                                class="w-12 p-1 text-center rounded bg-white/20 border border-white/30 outline-none text-white disabled:opacity-50"
-                            />
-                            <span class="ml-1">%</span>
-                        </div>
                     </div>
                 </div>
 
