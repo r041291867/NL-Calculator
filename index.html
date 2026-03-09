@@ -316,6 +316,10 @@
                                             stage.avoid }} / Exp: {{ stage.exp }}
                                         </div>
                                     </div>
+                                    <div v-else-if="m.stages" class="text-[12px] text-gray-400 mt-1">
+                                        HP: {{ m.stages[0].hp }} / Def: {{ m.stages[0].def }} / Avoid: {{
+                                        m.stages[0].avoid }} / Exp: {{ m.stages[0].exp }}
+                                    </div>
                                     <div v-else class="text-[12px] text-gray-400 mt-1">
                                         HP: {{ m.hp }} / Def: {{ m.def }} / Avoid: {{ m.avoid }} / Exp: {{ m.exp }}
                                     </div>
