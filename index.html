@@ -230,7 +230,7 @@
 
                     <div class="flex gap-2 flex-wrap">
                         <button
-                            @click="showAddMobDialog = true"
+                            @click="openAddMobDialog"
                             class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg shadow-sm transition font-bold text-sm flex items-center gap-1 mr-2"
                         >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -295,10 +295,28 @@
                                     <span v-else>{{ index + 1 }}</span>
                                 </td>
                                 <td class="p-4 border-b">
-                                    <div class="font-bold text-base">
-                                        {{ m.name }} <span class="text-[12px] text-gray-400">Lv.{{ m.level }}</span>
+                                    <div class="font-bold text-base flex items-center gap-1">
+                                        {{ m.name }}
+                                        <span
+                                            v-if="m.stages && m.stages.length > 1"
+                                            class="bg-purple-100 text-purple-700 text-[10px] px-1.5 py-0.5 rounded"
+                                            >多階段 ({{ m.stages.length }})</span
+                                        >
                                     </div>
-                                    <div class="text-[12px] text-gray-400">
+
+                                    <div v-if="m.stages && m.stages.length > 1" class="text-[12px] text-gray-400 mt-1">
+                                        總 HP: {{ m.stages ? m.stages.reduce((sum, s) => sum + s.hp, 0) : m.hp }} / 總
+                                        Exp: {{ m.exp }}
+                                        <div
+                                            v-for="(stage, index) in m.stages"
+                                            :key="stage.id"
+                                            class="text-[11px] text-gray-400"
+                                        >
+                                            [階 {{ index + 1 }}] HP: {{ stage.hp }} / Def: {{ stage.def }} / Avoid: {{
+                                            stage.avoid }} / Exp: {{ stage.exp }}
+                                        </div>
+                                    </div>
+                                    <div v-else class="text-[12px] text-gray-400 mt-1">
                                         HP: {{ m.hp }} / Def: {{ m.def }} / Avoid: {{ m.avoid }} / Exp: {{ m.exp }}
                                     </div>
                                     <div class="mt-1">
@@ -336,10 +354,7 @@
                                     </div>
                                 </td>
                                 <td class="p-4 border-b">
-                                    <div
-                                        class="text-[12px] text-gray-500 max-w-[180px] break-words font-mono"
-                                        :title="m.probString"
-                                    >
+                                    <div class="text-[12px] text-gray-500 max-w-[250px] break-words font-mono">
                                         <span v-if="m.dmg.actualHitRate <= 0" class="text-red-500 font-bold"
                                             >打不到怪啦！</span
                                         >
@@ -348,7 +363,7 @@
                                             class="text-red-500 font-bold"
                                             >打太久了，換隻怪吧？</span
                                         >
-                                        <span v-else>{{ m.probString }}</span>
+                                        <span v-else v-html="formatProbString(m.probString)"></span>
                                     </div>
                                 </td>
                                 <td class="p-4 border-b text-right font-mono text-gray-600">
@@ -359,14 +374,7 @@
                                         (優化為 HP / 平均傷害)
                                     </div>
                                     <span v-if="m.dmg.actualHitRate <= 0">∞</span>
-                                    <span v-else>{{ m.expectedHits.toFixed(2) }}</span>
-                                    <div
-                                        v-if="m.name.includes('香水') && m.dmg.actualHitRate>0"
-                                        class="text-xs text-gray-400"
-                                    >
-                                        ({{(m.expectedHits-1).toFixed(2) }} + 1)
-                                        <div>變身前期望擊殺次數</div>
-                                    </div>
+                                    <span v-else class="font-bold text-gray-800">{{ m.expectedHits.toFixed(2) }}</span>
                                 </td>
                                 <td
                                     class="p-4 border-b text-right font-bold font-mono text-lg"
@@ -396,8 +404,12 @@
                     class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm"
                 >
                     <transition name="dialog-content" appear>
-                        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden mx-4">
-                            <div class="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                        <div
+                            class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden mx-4 flex flex-col max-h-[90vh]"
+                        >
+                            <div
+                                class="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50 shrink-0"
+                            >
                                 <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
                                     <svg
                                         class="w-5 h-5 text-indigo-600"
@@ -429,60 +441,131 @@
                                 </button>
                             </div>
 
-                            <div class="p-6">
-                                <div class="grid grid-cols-2 gap-5 mb-6">
-                                    <div class="col-span-2">
-                                        <label class="block text-sm font-semibold text-gray-700 mb-1">怪物名稱</label>
-                                        <input
-                                            v-model="newMob.name"
-                                            type="text"
-                                            class="w-full p-2.5 border rounded-lg border-gray-300 input-focus text-sm bg-gray-50"
-                                            placeholder="例如：雪吉拉"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-semibold text-gray-700 mb-1">怪物等級</label>
-                                        <input
-                                            v-model.number="newMob.level"
-                                            type="number"
-                                            class="w-full p-2.5 border rounded-lg border-gray-300 input-focus text-sm bg-gray-50"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-semibold text-gray-700 mb-1">血量 (HP)</label>
-                                        <input
-                                            v-model.number="newMob.hp"
-                                            type="number"
-                                            class="w-full p-2.5 border rounded-lg border-gray-300 input-focus text-sm bg-gray-50"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-semibold text-gray-700 mb-1">物理防禦</label>
-                                        <input
-                                            v-model.number="newMob.def"
-                                            type="number"
-                                            class="w-full p-2.5 border rounded-lg border-gray-300 input-focus text-sm bg-gray-50"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-semibold text-cyan-700 mb-1">迴避率</label>
-                                        <input
-                                            v-model.number="newMob.avoid"
-                                            type="number"
-                                            class="w-full p-2.5 border rounded-lg border-cyan-300 bg-cyan-50 input-focus text-sm"
-                                        />
-                                    </div>
-                                    <div class="col-span-2">
-                                        <label class="block text-sm font-semibold text-gray-700 mb-1">提供經驗值</label>
-                                        <input
-                                            v-model.number="newMob.exp"
-                                            type="number"
-                                            class="w-full p-2.5 border rounded-lg border-gray-300 input-focus text-sm bg-gray-50"
-                                        />
+                            <div class="p-6 overflow-y-auto custom-scrollbar flex-grow bg-gray-50/50">
+                                <div class="mb-6 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">怪物名稱</label>
+                                    <input
+                                        v-model="newMobForm.name"
+                                        type="text"
+                                        class="w-full p-2.5 border rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                                        placeholder="請輸入怪物名稱"
+                                    />
+                                </div>
+
+                                <div class="space-y-4">
+                                    <div
+                                        v-for="(stage, index) in newMobForm.stages"
+                                        :key="index"
+                                        class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative group"
+                                    >
+                                        <button
+                                            v-if="newMobForm.stages.length > 1"
+                                            @click="removeStage(index)"
+                                            class="absolute -top-3 -right-3 bg-red-100 hover:bg-red-500 text-red-600 hover:text-white rounded-full p-1.5 shadow transition"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M6 18L18 6M6 6l12 12"
+                                                ></path>
+                                            </svg>
+                                        </button>
+
+                                        <div class="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
+                                            <span
+                                                class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded"
+                                                >第 {{ index + 1 }} 階段</span
+                                            >
+                                            <span
+                                                v-if="index === 0 && newMobForm.stages.length > 1"
+                                                class="text-xs text-gray-400"
+                                                >例如：小怪狀態</span
+                                            >
+                                            <span v-if="index === 1" class="text-xs text-gray-400">例如：本體狀態</span>
+                                        </div>
+
+                                        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                            <div>
+                                                <label class="block text-xs font-semibold text-gray-600 mb-1"
+                                                    >等級</label
+                                                >
+                                                <input
+                                                    v-model.number="stage.level"
+                                                    type="number"
+                                                    class="w-full p-2 border rounded bg-gray-50 focus:bg-white focus:border-indigo-500 outline-none text-sm"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-semibold text-gray-600 mb-1">HP</label>
+                                                <input
+                                                    v-model.number="stage.hp"
+                                                    type="number"
+                                                    class="w-full p-2 border rounded bg-gray-50 focus:bg-white focus:border-indigo-500 outline-none text-sm"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-semibold text-gray-600 mb-1"
+                                                    >物防</label
+                                                >
+                                                <input
+                                                    v-model.number="stage.def"
+                                                    type="number"
+                                                    class="w-full p-2 border rounded bg-gray-50 focus:bg-white focus:border-indigo-500 outline-none text-sm"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-semibold text-cyan-600 mb-1"
+                                                    >迴避率</label
+                                                >
+                                                <input
+                                                    v-model.number="stage.avoid"
+                                                    type="number"
+                                                    class="w-full p-2 border border-cyan-200 rounded bg-cyan-50 focus:bg-white focus:border-cyan-500 outline-none text-sm"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-semibold text-green-600 mb-1"
+                                                    >經驗值</label
+                                                >
+                                                <input
+                                                    v-model.number="stage.exp"
+                                                    type="number"
+                                                    class="w-full p-2 border border-green-200 rounded bg-green-50 focus:bg-white focus:border-green-500 outline-none text-sm"
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div class="flex justify-end gap-3 pt-2">
+                                <div class="mt-4 flex justify-center">
+                                    <button
+                                        @click="addStage"
+                                        class="text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1 transition border border-indigo-200 border-dashed"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                                            ></path>
+                                        </svg>
+                                        新增變身階段
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div
+                                class="p-5 border-t border-gray-100 bg-white shrink-0 flex justify-between items-center"
+                            >
+                                <div class="text-xs text-gray-400">
+                                    <span v-if="newMobForm.stages.length > 1"
+                                        >系統將會自動加總所有階段的期望次數與經驗。</span
+                                    >
+                                </div>
+                                <div class="flex gap-3">
                                     <button
                                         @click="showAddMobDialog = false"
                                         class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition font-medium text-sm"
@@ -490,10 +573,10 @@
                                         取消
                                     </button>
                                     <button
-                                        @click="handleAddMob"
-                                        class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition font-medium text-sm flex items-center gap-2"
+                                        @click="submitNewMob"
+                                        class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition font-bold text-sm flex items-center gap-2"
                                     >
-                                        新增至排行榜
+                                        儲存並分析
                                     </button>
                                 </div>
                             </div>
@@ -521,7 +604,13 @@
                     const useShadowPartner = ref(false);
                     const shadowPartnerDmg = ref(50);
                     const autoDist = ref({ luk: 5, dex: 0, str: 0 });
-                    const newMob = ref({ name: "", level: 30, hp: 1000, def: 10, avoid: 10, exp: 50 });
+
+                    // 用來綁定多階段表單的資料結構
+                    const defaultStage = () => ({ level: 50, hp: 1000, def: 10, avoid: 10, exp: 50 });
+                    const newMobForm = ref({
+                        name: "",
+                        stages: [defaultStage()],
+                    });
 
                     const char = ref({
                         level: 50,
@@ -574,15 +663,38 @@
                         char.value = StatsLogic.levelDown(char.value, autoDist.value);
                     };
 
-                    const handleAddMob = () => {
-                        if (!newMob.value.name) return alert("請輸入怪物名稱");
-                        rawMobs.value = [...rawMobs.value, { ...newMob.value }];
+                    // 表單操作方法
+                    const openAddMobDialog = () => {
+                        newMobForm.value = { name: "", stages: [defaultStage()] };
+                        showAddMobDialog.value = true;
+                    };
+
+                    const addStage = () => {
+                        // 預設帶入前一個階段的等級，方便輸入
+                        const lastLevel = newMobForm.value.stages[newMobForm.value.stages.length - 1].level;
+                        newMobForm.value.stages.push({ ...defaultStage(), level: lastLevel });
+                    };
+
+                    const removeStage = (index) => {
+                        newMobForm.value.stages.splice(index, 1);
+                    };
+
+                    const submitNewMob = () => {
+                        if (!newMobForm.value.name.trim()) return alert("請輸入怪物名稱");
+                        for (let i = 0; i < newMobForm.value.stages.length; i++) {
+                            const s = newMobForm.value.stages[i];
+                            if (!s.hp || s.hp <= 0) return alert(`第 ${i + 1} 階段的血量必須大於 0`);
+                        }
+
+                        // 深拷貝並存入 rawMobs
+                        rawMobs.value = [...rawMobs.value, JSON.parse(JSON.stringify(newMobForm.value))];
                         showAddMobDialog.value = false;
-                        newMob.value.name = "";
                     };
 
                     const handleDeleteMob = (m) => {
-                        rawMobs.value = rawMobs.value.filter((mob) => mob.name !== m.name && mob.level !== m.level);
+                        if (confirm(`確定刪除 ${m.name} 嗎？`)) {
+                            rawMobs.value = rawMobs.value.filter((mob) => mob.name !== m.name);
+                        }
                     };
 
                     const clearAll = () => {
@@ -592,10 +704,19 @@
                     const translateAtk = (key) =>
                         ({ weapon: "武器", glove: "手套", potion: "藥水", stars: "飛鏢", others: "其他" })[key] || key;
 
+                    // 優化機率字串顯示的 Helper
+                    const formatProbString = (str) => {
+                        if (!str) return "";
+                        return str.replace(
+                            /｜/g,
+                            '<br><span class="text-indigo-400 font-bold text-[10px] mt-1 inline-block">▼ 下一階段</span><br>',
+                        );
+                    };
+
                     const Storage = {
                         save: () => {
                             localStorage.setItem(
-                                "ms_mob_data_v11",
+                                "ms_mob_data_v12",
                                 JSON.stringify({
                                     char: char.value,
                                     rawMobs: rawMobs.value,
@@ -608,21 +729,12 @@
                             );
                         },
                         load: () => {
-                            const saved = localStorage.getItem("ms_mob_data_v11");
+                            const saved = localStorage.getItem("ms_mob_data_v12");
                             if (!saved) return;
                             try {
                                 const parsed = JSON.parse(saved);
                                 if (parsed.char) char.value = parsed.char;
                                 if (parsed.rawMobs) rawMobs.value = parsed.rawMobs;
-                                else if (parsed.mobs)
-                                    rawMobs.value = parsed.mobs.map((m) => ({
-                                        name: m.name,
-                                        level: m.level,
-                                        hp: m.hp,
-                                        def: m.def,
-                                        avoid: m.avoid,
-                                        exp: m.exp,
-                                    }));
                                 if (parsed.autoDist) autoDist.value = parsed.autoDist;
                                 if (parsed.isMonteCarlo !== undefined) isMonteCarlo.value = parsed.isMonteCarlo;
                                 if (parsed.mcIterations) mcIterations.value = parsed.mcIterations;
@@ -650,7 +762,6 @@
                             .then(() => alert("資料已複製到剪貼簿！請到另一台裝置匯入。"))
                             .catch(() => prompt("請手動複製以下文字：", dataStr));
                     };
-
                     const importData = () => {
                         const dataStr = prompt("請貼上您匯出的資料代碼：");
                         if (!dataStr) return;
@@ -681,7 +792,7 @@
                     return {
                         showAddMobDialog,
                         char,
-                        newMob,
+                        newMobForm,
                         rawMobs,
                         computedMobs,
                         autoDist,
@@ -692,13 +803,17 @@
                         totalAtk,
                         totalAcc,
                         translateAtk,
-                        handleAddMob,
+                        openAddMobDialog,
+                        addStage,
+                        removeStage,
+                        submitNewMob,
                         handleDeleteMob,
                         clearAll,
                         handleLevelUp,
                         handleLevelDown,
                         exportData,
                         importData,
+                        formatProbString,
                     };
                 },
             }).mount("#app");

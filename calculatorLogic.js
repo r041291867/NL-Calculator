@@ -175,31 +175,66 @@ export const BattleLogic = {
         return probs.join(", ");
     },
 
-    evaluateMob: (mob, charState, config) => {
-        const dmg = BattleLogic.calcDamageMetrics(charState, mob, config);
+    evaluateSingleStage: (stage, charState, config) => {
+        const dmg = BattleLogic.calcDamageMetrics(charState, stage, config);
 
         if (dmg.actualHitRate <= 0) {
-            return { ...mob, dmg, probString: "0.00", expectedHits: 9999, expPerHit: 0 };
+            return { ...stage, dmg, probString: "0.00", expectedHits: 9999, expPerHit: 0 };
         }
 
         const probStr = config.isMonteCarlo
-            ? BattleLogic.getMonteCarloProbs(mob.hp, dmg, config)
-            : BattleLogic.getNormalApproximationProbs(mob.hp, dmg);
+            ? BattleLogic.getMonteCarloProbs(stage.hp, dmg, config)
+            : BattleLogic.getNormalApproximationProbs(stage.hp, dmg);
 
-        const pArr = probStr.split(",").map((v) => parseFloat(v) / 100);
-        let expectedHits = 0;
-        let prevP = 0;
-        pArr.forEach((p, i) => {
-            let exactP = Math.max(0, p - prevP);
-            expectedHits += (i + 1) * exactP;
-            prevP = p;
-        });
+        const pArr = probStr.split(", ").map((v) => parseFloat(v) / 100);
+
+        // 這裡也用更 FP 的 reduce 來取代原本的 forEach 和外部變數
+        let expectedHits = pArr.reduce((acc, p, i, arr) => {
+            const prevP = i === 0 ? 0 : arr[i - 1];
+            const exactP = Math.max(0, p - prevP);
+            return acc + (i + 1) * exactP;
+        }, 0);
 
         if (expectedHits <= 0) expectedHits = 9999;
-        if (expectedHits > 10) expectedHits = mob.hp / dmg.mean_total;
-        if (mob.name.includes("香水")) expectedHits += 1;
+        // 修復了原本 mob.hp / dmg.mean_total;d 結尾多出來的 d
+        if (expectedHits > 10) expectedHits = stage.hp / dmg.mean_total;
         expectedHits = Math.max(1, expectedHits);
 
-        return { ...mob, dmg, probString: probStr, expectedHits, expPerHit: mob.exp / expectedHits };
+        return { ...stage, dmg, probString: probStr, expectedHits, expPerHit: stage.exp / expectedHits };
+    },
+
+    evaluateMob: (mob, charState, config) => {
+        // 如果怪物具有 `stages` 屬性 (陣列)，進入多階段 FP 計算模式
+        if (mob.stages && Array.isArray(mob.stages) && mob.stages.length > 0) {
+
+            // 1. Map: 將每個階段分別丟進公式計算，得到每一階的獨立結果
+            const evaluatedStages = mob.stages.map(stage =>
+                BattleLogic.evaluateSingleStage({ ...mob, ...stage }, charState, config)
+            );
+
+            // 2. Reduce: 加總所有的期望次數與總經驗值
+            const totalExpectedHits = evaluatedStages.reduce((sum, res) => sum + res.expectedHits, 0);
+            const totalExp = evaluatedStages.reduce((sum, res) => sum + (res.exp || 0), 0);
+
+            // 3. 組合 UI 顯示字串 (把每一階的機率串起來，例如： [一階] 100% | [二階] 22%, 83%)
+            const combinedProbString = evaluatedStages
+                .map((res, index) => `[階${index + 1}] ${res.probString}`)
+                .join(" ｜ ");
+
+            // 取最後一個階段的傷害作為面板顯示 (通常本體的傷害數字比較有參考價值)
+            const finalStageDmg = evaluatedStages[evaluatedStages.length - 1].dmg;
+
+            return {
+                ...mob,
+                dmg: finalStageDmg,
+                exp: totalExp, // 總經驗值
+                expectedHits: totalExpectedHits, // 總期望打擊次數
+                expPerHit: totalExp / totalExpectedHits, // 最終綜合效益
+                probString: combinedProbString
+            };
+        }
+
+        // 如果是一般單階段怪物，直接呼叫
+        return BattleLogic.evaluateSingleStage(mob, charState, config);
     }
 };
