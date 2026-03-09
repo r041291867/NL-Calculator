@@ -375,7 +375,7 @@
                                     {{ m.expPerHit.toFixed(2) }}
                                 </td>
                                 <td class="p-4 border-b text-center">
-                                    <button @click="handleDeleteMob(index)" class="text-red-400 hover:text-red-600">
+                                    <button @click="handleDeleteMob(m)" class="text-red-400 hover:text-red-600">
                                         刪除
                                     </button>
                                 </td>
@@ -581,8 +581,8 @@
                         newMob.value.name = "";
                     };
 
-                    const handleDeleteMob = (index) => {
-                        rawMobs.value = rawMobs.value.filter((_, i) => i !== index);
+                    const handleDeleteMob = (m) => {
+                        rawMobs.value = rawMobs.value.filter((mob) => mob.name !== m.name && mob.level !== m.level);
                     };
 
                     const clearAll = () => {
