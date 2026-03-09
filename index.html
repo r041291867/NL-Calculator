@@ -716,6 +716,9 @@
                     // 優化機率字串顯示的 Helper
                     const formatProbString = (str) => {
                         if (!str) return "";
+                        if (str === "打太久了，換隻怪吧？" || str === "打不到怪啦！") {
+                            return `<span class="text-red-500 font-bold">${str}</span>`;
+                        }
                         return str.replace(
                             /｜/g,
                             '<br><span class="text-indigo-400 font-bold text-[10px] mt-1 inline-block">▼ 下一階段</span><br>',

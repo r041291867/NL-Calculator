@@ -181,6 +181,17 @@ export const BattleLogic = {
         if (dmg.actualHitRate <= 0) {
             return { ...stage, dmg, probString: "0.00", expectedHits: 9999, expPerHit: 0 };
         }
+        // 如果期望打擊次數超過 10，且機率分布非常分散（例如有超過 10 個不同的機率值），則直接提示打太久了
+        if (stage.hp > dmg.mean_total * 10) {
+            const expectedHits = stage.hp / dmg.mean_total;
+            return {
+                ...stage,
+                dmg,
+                probString: "打太久了，換隻怪吧？",
+                expectedHits,
+                expPerHit: stage.exp / expectedHits
+            };
+        }
 
         const probStr = config.isMonteCarlo
             ? BattleLogic.getMonteCarloProbs(stage.hp, dmg, config)
@@ -188,7 +199,6 @@ export const BattleLogic = {
 
         const pArr = probStr.split(", ").map((v) => parseFloat(v) / 100);
 
-        // 這裡也用更 FP 的 reduce 來取代原本的 forEach 和外部變數
         let expectedHits = pArr.reduce((acc, p, i, arr) => {
             const prevP = i === 0 ? 0 : arr[i - 1];
             const exactP = Math.max(0, p - prevP);
@@ -196,7 +206,6 @@ export const BattleLogic = {
         }, 0);
 
         if (expectedHits <= 0) expectedHits = 9999;
-        // 修復了原本 mob.hp / dmg.mean_total;d 結尾多出來的 d
         if (expectedHits > 10) expectedHits = stage.hp / dmg.mean_total;
         expectedHits = Math.max(1, expectedHits);
 
@@ -217,9 +226,9 @@ export const BattleLogic = {
             const totalExp = evaluatedStages.reduce((sum, res) => sum + (res.exp || 0), 0);
 
             // 3. 組合 UI 顯示字串 (把每一階的機率串起來，例如： [一階] 100% | [二階] 22%, 83%)
-            const combinedProbString = evaluatedStages
+            const combinedProbString = evaluatedStages.length > 1? evaluatedStages
                 .map((res, index) => `[階${index + 1}] ${res.probString}`)
-                .join(" ｜ ");
+                .join(" ｜ "): evaluatedStages[0].probString;
 
             // 取最後一個階段的傷害作為面板顯示 (通常本體的傷害數字比較有參考價值)
             const finalStageDmg = evaluatedStages[evaluatedStages.length - 1].dmg;
