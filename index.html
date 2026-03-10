@@ -54,7 +54,9 @@
                         </select>
                     </div>
 
-                    <div class="flex items-center gap-3 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">
+                    <div
+                        class="flex items-center gap-2 md:gap-3 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100"
+                    >
                         <div class="font-bold text-indigo-700 flex items-center gap-1">Lv: {{ char.level }}</div>
 
                         <span class="text-xs font-bold text-indigo-700 flex items-center gap-1">
@@ -66,7 +68,7 @@
                                     d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
                                 ></path>
                             </svg>
-                            升級配點
+                            <span class="hidden md:inline">升級</span>配點
                         </span>
                         <div class="flex gap-2 items-center text-xs text-indigo-900 font-medium">
                             LUK:
@@ -109,7 +111,7 @@
                     <h2 class="text-xl font-bold flex items-center">
                         <span class="mr-2">👤</span> 鏢賊/幸運機 經驗效率計算機 (僅適用於四轉前)
                     </h2>
-                    <div class="border-white/20 flex flex-wrap gap-4 items-center">
+                    <div class="mt-1 md:mt-0 border-white/20 flex flex-wrap gap-4 items-center">
                         <div
                             class="flex items-center gap-2 bg-purple-600/30 p-2 rounded-lg border border-purple-400/50"
                         >
@@ -229,7 +231,7 @@
                     </div>
                 </div>
 
-                <div class="mt-4 pt-4 border-t border-white/20 flex flex-wrap gap-4 items-end">
+                <div class="mt-4 pt-4 border-t border-white/20 flex flex-wrap gap-4 items-end justify-end">
                     <div class="flex-grow">
                         <label class="block text-xs opacity-80 mb-2">攻擊力 (ATK) 分項</label>
                         <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
