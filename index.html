@@ -7,7 +7,7 @@
         <script src="https://cdn.tailwindcss.com"></script>
         <link rel="stylesheet" href="./style.css" />
     </head>
-    <body class="bg-gray-50 text-gray-800 p-4 md:p-8 pt-24 md:pt-24">
+    <body class="bg-gray-50 text-gray-800 p-4 md:p-8 pt-28 md:pt-24">
         <div id="app" class="max-w-7xl mx-auto relative">
             <div
                 class="fixed top-0 left-0 right-0 z-40 bg-white/85 backdrop-blur-md border-b border-gray-200 shadow-sm px-4 py-3"
@@ -146,7 +146,7 @@
                         ><input
                             v-model.number="char.level"
                             type="number"
-                            class="w-full p-2 rounded bg-yellow-400/20 border border-yellow-400/50 outline-none text-white text-lg font-bold"
+                            class="w-full p-2 rounded bg-yellow-400/20 border border-yellow-400/50 outline-none text-white font-bold"
                         />
                     </div>
                     <div>
@@ -189,6 +189,7 @@
                             class="w-full p-2 rounded bg-yellow-400/20 border border-yellow-400/50 outline-none text-white"
                         />
                     </div>
+                    <div class="md:hidden"></div>
                     <div>
                         <label class="block text-xs font-bold text-yellow-300 mb-1">爆擊額外 (%)</label
                         ><input
@@ -304,131 +305,219 @@
                             <tr class="bg-gray-100 text-gray-600 uppercase">
                                 <th class="p-4 border-b">排名</th>
                                 <th class="p-4 border-b">怪物資訊</th>
-                                <th class="p-4 border-b min-w-[200px]">詳細傷害區間 (單擊總和)</th>
-                                <th class="p-4 border-b">
+                                <th class="p-4 border-b min-w-[200px] hidden md:table-cell">詳細傷害區間 (單擊總和)</th>
+                                <th class="p-4 border-b hidden md:table-cell">
                                     推算機率串 (%)<br /><span class="text-xs text-gray-400 font-normal"
                                         >前10次攻擊累積擊殺率</span
                                     >
                                 </th>
-                                <th class="p-4 border-b text-right">期望擊殺次數</th>
-                                <th class="p-4 border-b text-right text-indigo-600 font-bold">期望每下經驗值</th>
+                                <th class="p-4 border-b text-right hidden md:table-cell">期望擊殺次數</th>
+                                <th class="p-4 border-b text-right text-indigo-600 font-bold">
+                                    期望每下<br class="sm:hidden" />經驗值
+                                </th>
                                 <th class="p-4 border-b text-center">操作</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr
-                                v-for="(m, index) in computedMobs"
-                                :key="index"
-                                :class="index === 0 ? 'bg-amber-50' : 'hover:bg-gray-50'"
-                            >
-                                <td class="p-4 border-b font-bold text-center">
-                                    <span v-if="index === 0" class="text-xl">🏆</span>
-                                    <span v-else-if="index === 1" class="text-xl">🥈</span>
-                                    <span v-else-if="index === 2" class="text-xl">🥉</span>
-                                    <span v-else>{{ index + 1 }}</span>
-                                </td>
-                                <td class="p-4 border-b">
-                                    <div class="font-bold text-base flex items-center gap-1">
-                                        {{ m.name }}
-                                        <span class="text-gray-500 text-[14px]">
-                                            {{ m.level ? `Lv. ${m.level}` : m.stages? `Lv. ${m.stages.reduce((max, s) =>
-                                            Math.max(max, s.level), 0)}` : "" }}
-                                        </span>
-                                        <span
-                                            v-if="m.stages && m.stages.length > 1"
-                                            class="bg-purple-100 text-purple-700 text-[10px] px-1.5 py-0.5 rounded"
-                                            >多階段 ({{ m.stages.length }})</span
-                                        >
-                                    </div>
-
-                                    <div v-if="m.stages && m.stages.length > 1" class="text-[12px] text-gray-400 mt-1">
-                                        總 HP: {{ m.stages ? m.stages.reduce((sum, s) => sum + s.hp, 0) : m.hp }} / 總
-                                        Exp: {{ m.exp }}
+                            <template v-for="(m, index) in computedMobs" :key="index">
+                                <tr :class="index === 0 ? 'bg-amber-50' : 'hover:bg-gray-50'">
+                                    <td class="p-4 border-b font-bold text-center">
+                                        <span v-if="index === 0" class="text-xl">🏆</span>
+                                        <span v-else-if="index === 1" class="text-xl">🥈</span>
+                                        <span v-else-if="index === 2" class="text-xl">🥉</span>
+                                        <span v-else>{{ index + 1 }}</span>
+                                    </td>
+                                    <td class="p-4 border-b">
                                         <div
-                                            v-for="(stage, index) in m.stages"
-                                            :key="stage.id"
-                                            class="text-[11px] text-gray-400"
+                                            class="font-bold text-base flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:gap-1"
                                         >
-                                            [階 {{ index + 1 }}] HP: {{ stage.hp }} / Def: {{ stage.def }} / Avoid: {{
-                                            stage.avoid }} / Exp: {{ stage.exp }}
+                                            <span class="text-gray-500 text-[14px] font-normal sm:order-2">
+                                                {{ m.level ? `Lv. ${m.level}` : m.stages? `Lv. ${m.stages.reduce((max,
+                                                s) => Math.max(max, s.level), 0)}` : "" }}
+                                            </span>
+                                            <span class="sm:order-1">{{ m.name }}</span>
+                                            <span
+                                                v-if="m.stages && m.stages.length > 1"
+                                                class="bg-purple-100 text-purple-700 text-[10px] px-1.5 py-0.5 rounded self-start sm:order-3"
+                                                >多階段 ({{ m.stages.length }})</span
+                                            >
                                         </div>
-                                    </div>
-                                    <div v-else-if="m.stages" class="text-[12px] text-gray-400 mt-1">
-                                        HP: {{ m.stages[0].hp }} / Def: {{ m.stages[0].def }} / Avoid: {{
-                                        m.stages[0].avoid }} / Exp: {{ m.stages[0].exp }}
-                                    </div>
-                                    <div v-else class="text-[12px] text-gray-400 mt-1">
-                                        HP: {{ m.hp }} / Def: {{ m.def }} / Avoid: {{ m.avoid }} / Exp: {{ m.exp }}
-                                    </div>
-                                    <div class="mt-1">
-                                        <span
-                                            v-if="m.dmg.actualHitRate >= 1"
-                                            class="text-[12px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded border border-green-200"
-                                            >100% 必中</span
+
+                                        <!-- 期望擊殺次數：手機永遠顯示 -->
+                                        <div class="md:hidden mt-1 text-xs font-mono text-gray-600">
+                                            <span class="text-gray-500">期望擊殺次數：</span>
+                                            <span v-if="m.dmg.actualHitRate <= 0" class="font-bold">∞</span>
+                                            <span v-else class="font-bold text-gray-800"
+                                                >{{ m.expectedHits.toFixed(2) }}</span
+                                            >
+                                        </div>
+
+                                        <!-- 怪物詳細資訊：桌機永遠顯示，手機預設隱藏，展開後顯示 -->
+                                        <div :class="isMobExpanded(index) ? '' : 'hidden md:block'">
+                                            <div
+                                                v-if="m.stages && m.stages.length > 1"
+                                                class="text-[12px] text-gray-400 mt-1"
+                                            >
+                                                總 HP: {{ m.stages ? m.stages.reduce((sum, s) => sum + s.hp, 0) : m.hp
+                                                }} / 總 Exp: {{ m.exp }}
+                                                <div
+                                                    v-for="(stage, sIdx) in m.stages"
+                                                    :key="stage.id"
+                                                    class="text-[11px] text-gray-400"
+                                                >
+                                                    [階 {{ sIdx + 1 }}] HP: {{ stage.hp }} / Def: {{ stage.def }} /
+                                                    Avoid: {{ stage.avoid }} / Exp: {{ stage.exp }}
+                                                </div>
+                                            </div>
+                                            <div v-else-if="m.stages" class="text-[12px] text-gray-400 mt-1">
+                                                HP: {{ m.stages[0].hp }} / Def: {{ m.stages[0].def }} / Avoid: {{
+                                                m.stages[0].avoid }} / Exp: {{ m.stages[0].exp }}
+                                            </div>
+                                            <div v-else class="text-[12px] text-gray-400 mt-1">
+                                                HP: {{ m.hp }} / Def: {{ m.def }} / Avoid: {{ m.avoid }} / Exp: {{ m.exp
+                                                }}
+                                            </div>
+                                            <div class="mt-1">
+                                                <span
+                                                    v-if="m.dmg.actualHitRate >= 1"
+                                                    class="text-[12px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded border border-green-200"
+                                                    >100% 必中</span
+                                                >
+                                                <span
+                                                    v-else-if="m.dmg.actualHitRate <= 0"
+                                                    class="text-[12px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded border border-red-200 font-bold"
+                                                    >絕對 Miss</span
+                                                >
+                                                <span
+                                                    v-else
+                                                    class="text-[12px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded border border-yellow-200"
+                                                    >命中率: {{ (m.dmg.actualHitRate * 100).toFixed(1) }}%</span
+                                                >
+                                            </div>
+                                            <!-- 手機展開時額外顯示的欄位資訊 -->
+                                            <div
+                                                class="md:hidden mt-2 pt-2 border-t border-gray-200 text-xs font-mono leading-tight space-y-1"
+                                            >
+                                                <div class="text-gray-500">
+                                                    沒爆擊:
+                                                    <span class="text-blue-500">{{ m.dmg.displayTotalNoCritMin }}</span>
+                                                    ~
+                                                    <span class="text-red-400">{{ m.dmg.displayTotalNoCritMax }}</span>
+                                                </div>
+                                                <div class="text-orange-600">
+                                                    全爆擊:
+                                                    <span class="text-blue-500"
+                                                        >{{ m.dmg.displayTotalAllCritMin }}</span
+                                                    >
+                                                    ~
+                                                    <span class="text-red-500 font-bold"
+                                                        >{{ m.dmg.displayTotalAllCritMax }}</span
+                                                    >
+                                                </div>
+                                                <div class="text-indigo-600 font-bold pt-1 border-t border-gray-200">
+                                                    平均傷害: {{ m.dmg.mean_total.toFixed(0) }}
+                                                    <span
+                                                        v-if="useShadowPartner"
+                                                        class="text-purple-500 text-[10px] ml-1"
+                                                        >(含影分身)</span
+                                                    >
+                                                </div>
+                                                <div
+                                                    class="text-gray-500 max-w-[260px] break-words pt-1 border-t border-gray-200"
+                                                >
+                                                    <span class="text-gray-600 font-semibold not-italic"
+                                                        >推算機率串：</span
+                                                    ><br />
+                                                    <span v-if="m.dmg.actualHitRate <= 0" class="text-red-500 font-bold"
+                                                        >打不到怪啦！</span
+                                                    >
+                                                    <span
+                                                        v-else-if="m.probString.split(',').length > 10"
+                                                        class="text-red-500 font-bold"
+                                                        >打太久了，換隻怪吧？</span
+                                                    >
+                                                    <span v-else v-html="formatProbString(m.probString)"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- 手機展開/收起按鈕 -->
+                                        <button
+                                            @click="toggleMobExpand(index)"
+                                            class="md:hidden mt-1.5 text-xs text-indigo-500 hover:text-indigo-700 flex items-center gap-0.5 font-medium"
                                         >
-                                        <span
-                                            v-else-if="m.dmg.actualHitRate <= 0"
-                                            class="text-[12px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded border border-red-200 font-bold"
-                                            >絕對 Miss</span
+                                            {{ isMobExpanded(index) ? '▲ 收起' : '▼ 展開詳情' }}
+                                        </button>
+                                    </td>
+                                    <td class="p-4 border-b text-xs font-mono leading-tight hidden md:table-cell">
+                                        <div class="text-gray-500">
+                                            沒爆擊:
+                                            <span class="text-blue-500">{{ m.dmg.displayTotalNoCritMin }}</span> ~
+                                            <span class="text-red-400">{{ m.dmg.displayTotalNoCritMax }}</span>
+                                        </div>
+                                        <div class="text-orange-600">
+                                            全爆擊:
+                                            <span class="text-blue-500">{{ m.dmg.displayTotalAllCritMin }}</span> ~
+                                            <span class="text-red-500 font-bold"
+                                                >{{ m.dmg.displayTotalAllCritMax }}</span
+                                            >
+                                        </div>
+                                        <div class="text-indigo-600 font-bold mt-1 pt-1 border-t border-gray-200">
+                                            平均傷害: {{ m.dmg.mean_total.toFixed(0) }}
+                                            <span v-if="useShadowPartner" class="text-purple-500 text-[10px] ml-1"
+                                                >(含影分身)</span
+                                            >
+                                        </div>
+                                    </td>
+                                    <td class="p-4 border-b hidden md:table-cell">
+                                        <div class="text-[12px] text-gray-500 max-w-[250px] break-words font-mono">
+                                            <span v-if="m.dmg.actualHitRate <= 0" class="text-red-500 font-bold"
+                                                >打不到怪啦！</span
+                                            >
+                                            <span
+                                                v-else-if="m.probString.split(',').length > 10"
+                                                class="text-red-500 font-bold"
+                                                >打太久了，換隻怪吧？</span
+                                            >
+                                            <span v-else v-html="formatProbString(m.probString)"></span>
+                                        </div>
+                                    </td>
+                                    <td class="p-4 border-b text-right font-mono text-gray-600 hidden md:table-cell">
+                                        <div
+                                            v-if="m.expectedHits > 10 && m.dmg.actualHitRate>0"
+                                            class="text-xs text-gray-400 mb-1"
                                         >
-                                        <span
-                                            v-else
-                                            class="text-[12px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded border border-yellow-200"
-                                            >命中率: {{ (m.dmg.actualHitRate * 100).toFixed(1) }}%</span
+                                            (優化為 HP / 平均傷害)
+                                        </div>
+                                        <span v-if="m.dmg.actualHitRate <= 0">∞</span>
+                                        <span v-else class="font-bold text-gray-800"
+                                            >{{ m.expectedHits.toFixed(2) }}</span
                                         >
-                                    </div>
-                                </td>
-                                <td class="p-4 border-b text-xs font-mono leading-tight">
-                                    <div class="text-gray-500">
-                                        沒爆擊: <span class="text-blue-500">{{ m.dmg.displayTotalNoCritMin }}</span> ~
-                                        <span class="text-red-400">{{ m.dmg.displayTotalNoCritMax }}</span>
-                                    </div>
-                                    <div class="text-orange-600">
-                                        全爆擊: <span class="text-blue-500">{{ m.dmg.displayTotalAllCritMin }}</span> ~
-                                        <span class="text-red-500 font-bold">{{ m.dmg.displayTotalAllCritMax }}</span>
-                                    </div>
-                                    <div class="text-indigo-600 font-bold mt-1 pt-1 border-t border-gray-200">
-                                        平均傷害: {{ m.dmg.mean_total.toFixed(0) }}
-                                        <span v-if="useShadowPartner" class="text-purple-500 text-[10px] ml-1"
-                                            >(含影分身)</span
-                                        >
-                                    </div>
-                                </td>
-                                <td class="p-4 border-b">
-                                    <div class="text-[12px] text-gray-500 max-w-[250px] break-words font-mono">
-                                        <span v-if="m.dmg.actualHitRate <= 0" class="text-red-500 font-bold"
-                                            >打不到怪啦！</span
-                                        >
-                                        <span
-                                            v-else-if="m.probString.split(',').length > 10"
-                                            class="text-red-500 font-bold"
-                                            >打太久了，換隻怪吧？</span
-                                        >
-                                        <span v-else v-html="formatProbString(m.probString)"></span>
-                                    </div>
-                                </td>
-                                <td class="p-4 border-b text-right font-mono text-gray-600">
-                                    <div
-                                        v-if="m.expectedHits > 10 && m.dmg.actualHitRate>0"
-                                        class="text-xs text-gray-400 mb-1"
+                                    </td>
+                                    <td
+                                        class="p-4 border-b text-right font-bold font-mono text-lg"
+                                        :class="m.dmg.actualHitRate <= 0 ? 'text-gray-400' : 'text-indigo-600'"
                                     >
-                                        (優化為 HP / 平均傷害)
-                                    </div>
-                                    <span v-if="m.dmg.actualHitRate <= 0">∞</span>
-                                    <span v-else class="font-bold text-gray-800">{{ m.expectedHits.toFixed(2) }}</span>
-                                </td>
-                                <td
-                                    class="p-4 border-b text-right font-bold font-mono text-lg"
-                                    :class="m.dmg.actualHitRate <= 0 ? 'text-gray-400' : 'text-indigo-600'"
-                                >
-                                    {{ m.expPerHit.toFixed(2) }}
-                                </td>
-                                <td class="p-4 border-b text-center">
-                                    <button @click="handleDeleteMob(m)" class="text-red-400 hover:text-red-600">
-                                        刪除
-                                    </button>
-                                </td>
-                            </tr>
+                                        {{ m.expPerHit.toFixed(2) }}
+                                    </td>
+                                    <td class="p-4 border-b text-center">
+                                        <button
+                                            @click="handleDeleteMob(m)"
+                                            class="text-red-400 hover:text-red-600 transition"
+                                            title="刪除"
+                                        >
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                ></path>
+                                            </svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
                             <tr v-if="computedMobs.length === 0">
                                 <td colspan="7" class="p-8 text-center text-gray-400">
                                     目前尚無數據，請點擊上方「新增怪物」開始分析
@@ -640,6 +729,13 @@
             createApp({
                 setup() {
                     const showAddMobDialog = ref(false);
+                    const expandedMobIndices = ref([]);
+                    const toggleMobExpand = (index) => {
+                        const i = expandedMobIndices.value.indexOf(index);
+                        if (i === -1) expandedMobIndices.value.push(index);
+                        else expandedMobIndices.value.splice(i, 1);
+                    };
+                    const isMobExpanded = (index) => expandedMobIndices.value.includes(index);
                     const isMonteCarlo = ref(false);
                     const mcIterations = ref(10000);
                     const useShadowPartner = ref(false);
@@ -839,6 +935,8 @@
 
                     return {
                         showAddMobDialog,
+                        toggleMobExpand,
+                        isMobExpanded,
                         char,
                         newMobForm,
                         rawMobs,
